@@ -23,7 +23,11 @@ var Pod = require('bip-pod'),
         name : 'syndication',
         description : 'Syndication',
         description_long : 'The Syndication Pod lets you subscribe to or create syndications such as RSS, ATOM, OStatus, PubSub or your own custom time-series lists, logs and content feeds.',
-        dataSources : [ require('./models/track_list') ]
+        dataSources : [ 
+            require('./models/track_list'), 
+            require('./models/feed'),
+            require('./models/feed_entity'),
+        ]
     });
 
 Syndication.add(require('./list.js'));

@@ -20,6 +20,10 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+var djs = require('datejs'),
+RSSFeed = require('rss'),
+request = require('request');
+
 function Feed(podConfig) {
     this.name = 'feed';
     this.description = 'Create A Feed',
@@ -33,146 +37,213 @@ function Feed(podConfig) {
 Feed.prototype = {};
 
 Feed.prototype.getSchema = function() {
-    return {        
-        'config' : {
-            properties : {
-                "renderers" : {
-                    type : "object",
-                    properties : {
-                        'rss' : {
-                            type : "string",
-                            oneOf : [
-                            {
-                                "$ref" : "#/definitions/render_mode"
-                            }
-                            ]
-                        }
-                    }
-                },
-                "default_public" : {
-                    type : "string",                        
-                    oneOf : [
-                    {
-                        "$ref" : "#/definitions/default_public"
-                    }
-                    ]
-                }
-            },
-            "definitions" : {
-                "render_mode" : {
-                    "description" : "Keep this renderer private, or readable by anyone",
-                    "enum" : [ "private" , "public" ],
-                    "enum_label" : ["Me Only", "Anyone"],
-                    "default" : "private"
-                },
-                "default_public" : {
-                    "description" : "Make this my Default Public Profile Feed. 'On' overrides privacy setting",
-                    "enum" : [ "on" , "off" ],
-                    "enum_label" : ["On", "Off"],
-                    "default" : "off"
-                }
-            }
-        },
+    return {
         'renderers' : {
             'rss' : {
                 description : 'RSS 2.0',
                 contentType : DEFS.CONTENTTYPE_XML
             }
         },
-        'defaults' : {
-            'icon_url' : CFG_CDN + '/channels/rss.png'
-        },
-        'exports' : {
-            properties : {            
-            }
-        },
         "imports": {
             properties : {
                 'title' : {
-                    type : String,
+                    type : 'string',
                     description : 'Title'
                 },
                 'link' : {
-                    type : String,
+                    type : 'string',
                     description : 'Link'
                 },
                 'description' : {
-                    type : String,
+                    type : 'string',
                     description : 'Description'
                 },
                 'category' : {
-                    type : String,
+                    type : 'string',
                     description : 'Category Name'
+                },
+                'created_time' : {
+                    type : 'string',
+                    description : 'UTC Created Time'
                 }
             }
         }
     }
 }
 
-Feed.prototype._getFeedFilePathList = function(channel) {
-    var dataDir = this.$resource.getDataDir(channel, 'list');        
-    return process.cwd() + dataDir + channel.id + ".jsontxt";
-}
+Feed.prototype.setup = function(channel, accountInfo, next) {
+    var $resource = this.$resource,
+    self = this,
+    dao = $resource.dao,
+    log = $resource.log,
+    modelName = this.$resource.getDataSourceName('feed');
 
-Feed.prototype.setup = function(channel, accountInfo, options, next) {
-    var dao = this.$resource.dao,
-    modelName = 'channel_pod_syndication_tracking',
-    dataDir = this.$resource.getDataDir(channel, 'feed');
-    
-    var fName = this._getFeedFilePath(channel);
-    
-    // @todo derive datdir from fName basename
-    helper.mkdir_p(dataDir, 0777, function() {
-
+    (function(channel, accountInfo, next) {
         var feedStruct = {
             owner_id : channel.owner_id,
             channel_id : channel.id,
-            last_update : helper.nowUTCSeconds(),
-            last_build : helper.nowUTCSeconds()
+            last_update : app.helper.nowUTCSeconds(),
+            last_build : app.helper.nowUTCSeconds()
         }
 
         model = dao.modelFactory(modelName, feedStruct, accountInfo);
-
         dao.create(model, function(err, result) {
-            // touch the  .json source file
-            fs.writeFile(fName, "", function(err) {
-                if (err) {
-                    console.log(err);
-                    throw new Error(err);
-                } else {
-                    console.log("created :: " + fName );
-                    next(err, 'channel', channel);
-                }
-            });
-
+            if (err) {
+                log(err, channel, 'error');
+            }
             next(err, 'channel', channel);
-        }, accountInfo);
-    });
-}
 
+        }, accountInfo);
+    })(channel, accountInfo, next);
+}
 
 /**
  * Invokes (runs) the action.
  */
 Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, next) {
-    var dao = this.$resource.dao,
-    modelName = 'channel_pod_syndication_tracking',
-    dataDir = this.$resource.getDataDir(channel, 'feed'),
-    exports = {};
+    var $resource = this.$resource,
+    self = this,
+    dao = $resource.dao,
+    log = $resource.log,
+    modelName = this.$resource.getDataSourceName('feed'),
+    entityModelName = this.$resource.getDataSourceName('feed_entity');
 
-    // pump the import payload straight into the file
-    var fName = process.cwd() + dataDir + channel.id + ".json";
-    fs.appendFile(fName, JSON.stringify(imports) + "\n", function (err) {
-        if (err) {
-            throw new Error('Could not init RSS for channel ' + channel);
-        } else {
-            // update model last_update attribute
-            next(err, exports);
-        }
-    });
+    (function(imports, channel, sysImports, next) {
+        // get feed metadata
+        dao.find(
+            modelName,
+            {
+                owner_id : channel.owner_id,
+                channel_id : channel.id
+            },
+            function(err, result) {
+                if (err) {
+                    log(err, channel, 'error');
+                } else {
+                    // set last update time (now)
+                    dao.updateColumn(
+                        modelName,
+                        {
+                            id : result.id
+                        },
+                        {
+                            last_update : app.helper.nowUTCSeconds()
+                        }
+                        );
 
-    next(false, exports);
+                    // insert entry
+                    var entityStruct = {
+                        feed_id : result.id,
+                        title : imports.title,
+                        link : imports.link,
+                        description : imports.description,
+                        category : imports.category,
+                        entity_created : imports.created_time && imports.created_time !== '' ?
+                        Date.parse(imports.created_time).getTime()/1000 :
+                        app.helper.nowUTCSeconds()
+                    }
+
+                    model = dao.modelFactory(entityModelName, entityStruct);
+                    dao.create(model, function(err, result) {
+                        if (err) {
+                            log(err, channel, 'error');
+                        }
+                        next(
+                            err,
+                            {
+                                id : result.id
+                            }
+                            );
+                    });
+                }
+            }
+            );
+
+    })(imports, channel, sysImports, next);
 }
+
+Feed.prototype.rpc = function(method, options, req, next, channel) {
+    var $resource = this.$resource,
+    self = this,
+    dao = $resource.dao,
+    log = $resource.log,
+    modelName = this.$resource.getDataSourceName('feed'),
+    entityModelName = this.$resource.getDataSourceName('feed_entity');
+
+    // @todo - cache compiled feed to disk
+    if (method == 'rss') {
+
+        // get feed metadata
+        dao.find(
+            modelName,
+            {
+                owner_id : channel.owner_id,
+                channel_id : channel.id
+            },
+            function(err, result) {
+                if (err) {
+                    log(err, channel, 'error');
+                    next(true, null, err)
+                } else if (!result) {
+                    next();
+                } else {
+                    // get last 10 entities
+                    var account = {
+                        user : {
+                            id : channel.owner_id
+                        }
+                    };
+                    dao.list(
+                        entityModelName,
+                        null,
+                        10,
+                        1,
+                        'entity_created',
+                        {
+                            feed_id : result.id
+                        },
+                        function(err, modelName, results) {
+                            if (err) {
+                                log(err, channel, 'error');
+                                next(true, null, err)
+                            } else {
+                                var struct = {
+                                    'meta' : {
+                                        title: channel.name,
+                                        feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
+                                        site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
+                                        image : '', // channel config icon image
+                                        description: channel.note,
+                                        author : req.remoteUser.getName()
+                                    }
+                                };
+                                var renderOpts = {
+                                    content_type : self.getSchema().renderers.rss.contentType
+                                };
+
+
+                                feed = new RSSFeed(struct.meta);
+                                for (var i = 0; i < results.data.length; i++) {
+                                    console.log(results.data[i]);
+                                    results.data[i].guid = results.data[i].id;
+                                    results.data[i].categories = [ results.data[i].category ];
+                                    feed.item(results.data[i]);
+                                }
+
+                                next(
+                                    false,
+                                    undefined,
+                                    feed.xml(),
+                                    200,
+                                    renderOpts);
+                            }
+                        }
+                        );
+                }
+            }
+            );
+    }
+};
 
 // -----------------------------------------------------------------------------
 module.exports = Feed;
