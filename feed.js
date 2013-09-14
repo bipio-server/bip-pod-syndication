@@ -43,7 +43,7 @@ Feed.prototype.getSchema = function() {
                 description : 'RSS 2.0',
                 contentType : DEFS.CONTENTTYPE_XML
             }
-        },
+        },        
         "imports": {
             properties : {
                 'title' : {
@@ -162,7 +162,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     })(imports, channel, sysImports, next);
 }
 
-Feed.prototype.rpc = function(method, options, req, next, channel) {
+Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     var $resource = this.$resource,
     self = this,
     dao = $resource.dao,
@@ -172,76 +172,69 @@ Feed.prototype.rpc = function(method, options, req, next, channel) {
 
     // @todo - cache compiled feed to disk
     if (method == 'rss') {
-
-        // get feed metadata
-        dao.find(
-            modelName,
-            {
-                owner_id : channel.owner_id,
-                channel_id : channel.id
-            },
-            function(err, result) {
-                if (err) {
-                    log(err, channel, 'error');
-                    next(true, null, err)
-                } else if (!result) {
-                    next();
-                } else {
-                    // get last 10 entities
-                    var account = {
-                        user : {
-                            id : channel.owner_id
-                        }
-                    };
-                    dao.list(
-                        entityModelName,
-                        null,
-                        10,
-                        1,
-                        'entity_created',
-                        {
-                            feed_id : result.id
-                        },
-                        function(err, modelName, results) {
-                            if (err) {
-                                log(err, channel, 'error');
-                                next(true, null, err)
-                            } else {
-                                var struct = {
-                                    'meta' : {
-                                        title: channel.name,
-                                        feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
-                                        site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                                        image : '', // channel config icon image
-                                        description: channel.note,
-                                        author : req.remoteUser.getName()
-                                    }
-                                };
-                                var renderOpts = {
-                                    content_type : self.getSchema().renderers.rss.contentType
-                                };
-
-
-                                feed = new RSSFeed(struct.meta);
-                                for (var i = 0; i < results.data.length; i++) {
-                                    console.log(results.data[i]);
-                                    results.data[i].guid = results.data[i].id;
-                                    results.data[i].categories = [ results.data[i].category ];
-                                    feed.item(results.data[i]);
-                                }
-
-                                next(
-                                    false,
-                                    undefined,
-                                    feed.xml(),
-                                    200,
-                                    renderOpts);
+        (function(channel, req, res) {
+            dao.find(
+                modelName,
+                {
+                    owner_id : channel.owner_id,
+                    channel_id : channel.id
+                },
+                function(err, result) {
+                    if (err) {
+                        log(err, channel, 'error');
+                        res.send(500);
+                    } else if (!result) {
+                        res.send(404);
+                    } else {
+                        // get last 10 entities
+                        var account = {
+                            user : {
+                                id : channel.owner_id
                             }
+                        };
+                        dao.list(
+                            entityModelName,
+                            null,
+                            10,
+                            1,
+                            'entity_created',
+                            {
+                                feed_id : result.id
+                            },
+                            function(err, modelName, results) {
+                                if (err) {
+                                    log(err, channel, 'error');
+                                    res.send(500);
+                                } else {
+                                    var struct = {
+                                        'meta' : {
+                                            title: channel.name,
+                                            feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
+                                            site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
+                                            image : '', // channel config icon image
+                                            description: channel.note,
+                                            author : req.remoteUser.getName()
+                                        }
+                                    };
+                                    var renderOpts = {
+                                        content_type : self.getSchema().renderers.rss.contentType
+                                    };
+
+                                    feed = new RSSFeed(struct.meta);
+                                    for (var i = 0; i < results.data.length; i++) {
+                                        results.data[i].guid = results.data[i].id;
+                                        results.data[i].categories = [ results.data[i].category ];
+                                        feed.item(results.data[i]);
+                                    }
+
+                                    res.contentType(self.getSchema().renderers.rss.contentType);
+                                    res.send(feed.xml());
+                                }
+                            });
                         }
-                        );
-                }
-            }
-            );
+                    }
+                );
+        })(channel, req, res);
     }
 };
 
