@@ -3,12 +3,14 @@ FeedEntity = {
     entitySchema : {
         id: {
             type: String,
+            index : true,
             renderable: false,
             writable: false
         },
 
         feed_id : {
             type: String,
+            index : true,
             renderable: false,
             writable: false
         },
@@ -21,19 +23,24 @@ FeedEntity = {
 
         entity_created : {
             type: Number,
+            index : true,
             renderable: true,
             writable: false
         },
 
-        // last append time
         title : {
             type : String,
             renderable : true,
             writable : false
         },    
 
-        // last build time
-        link : {
+        url : {
+            type : String,
+            renderable : true,
+            writable : false
+        },
+        
+        author : {
             type : String,
             renderable : true,
             writable : false
@@ -47,6 +54,7 @@ FeedEntity = {
         
         category : {
             type : String,
+            index : true,
             renderable : true,
             writable : false
         }

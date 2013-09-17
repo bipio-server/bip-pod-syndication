@@ -41,6 +41,7 @@ Feed.prototype.getSchema = function() {
         'renderers' : {
             'rss' : {
                 description : 'RSS 2.0',
+                description_long : 'Serves stored items as an RSS 2.0 Feed',
                 contentType : DEFS.CONTENTTYPE_XML
             }
         },        
@@ -50,13 +51,17 @@ Feed.prototype.getSchema = function() {
                     type : 'string',
                     description : 'Title'
                 },
-                'link' : {
-                    type : 'string',
-                    description : 'Link'
-                },
                 'description' : {
                     type : 'string',
                     description : 'Description'
+                },
+                'url' : {
+                    type : 'string',
+                    description : 'Item URL'
+                },
+                'author' : {
+                    type : 'string',
+                    description : 'Author name'
                 },
                 'category' : {
                     type : 'string',
@@ -135,7 +140,8 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                     var entityStruct = {
                         feed_id : result.id,
                         title : imports.title,
-                        link : imports.link,
+                        url : imports.url,
+                        author : imports.author,
                         description : imports.description,
                         category : imports.category,
                         entity_created : imports.created_time && imports.created_time !== '' ?
@@ -192,15 +198,40 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                                 id : channel.owner_id
                             }
                         };
+
+                        var page_size = 10,
+                            page = 1,
+                            order_by = 'recent';
+
+                        if (undefined != req.query.page_size) {
+                            page_size = parseInt(req.query.page_size);
+                        }
+
+                        if (undefined != req.query.page) {
+                            page = parseInt(req.query.page);
+                        }
+
+                        var filter = {
+                            feed_id : result.id
+                        };
+                        // extract filters
+                        if (undefined != req.query.filter) {
+                            var tokens = req.query.filter.split(',');
+                            for (i in tokens) {
+                                var filterVars = tokens[i].split(':');
+                                if (undefined != filterVars[0] && undefined != filterVars[1]) {
+                                    filter[filterVars[0]] = filterVars[1];
+                                }
+                            }
+                        }
+
                         dao.list(
                             entityModelName,
                             null,
-                            10,
-                            1,
+                            page_size,
+                            page,
                             'entity_created',
-                            {
-                                feed_id : result.id
-                            },
+                            filter,
                             function(err, modelName, results) {
                                 if (err) {
                                     log(err, channel, 'error');
