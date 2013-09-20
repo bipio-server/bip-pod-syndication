@@ -43,8 +43,13 @@ Feed.prototype.getSchema = function() {
                 description : 'RSS 2.0',
                 description_long : 'Serves stored items as an RSS 2.0 Feed',
                 contentType : DEFS.CONTENTTYPE_XML
+            },
+            'json' : {
+                description : 'JSON',
+                description_long : 'Serves stored items as JSON',
+                contentType : DEFS.CONTENTTYPE_JSON
             }
-        },        
+        },
         "imports": {
             properties : {
                 'title' : {
@@ -168,104 +173,131 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     })(imports, channel, sysImports, next);
 }
 
+Feed.prototype._retr = function(channel, page_size, page, customFilter, next) {
+    var $resource = this.$resource,
+        dao = $resource.dao,
+        modelName = $resource.getDataSourceName('feed'),
+        entityModelName = $resource.getDataSourceName('feed_entity');
+
+    dao.find(
+        modelName,
+        {
+            owner_id : channel.owner_id,
+            channel_id : channel.id
+        },
+        function(err, feedMeta) {
+            if (err || !feedMeta) {
+                next(err, feedMeta);
+            } else {
+                // get last 10 entities
+                var account = {
+                    user : {
+                        id : feedMeta.owner_id
+                    }
+                };
+
+                var page_size = 10,
+                    page = 1,
+                    order_by = 'entity_created';
+
+                if (undefined != page_size) {
+                    page_size = parseInt(page_size);
+                }
+
+                if (undefined != page) {
+                    page = parseInt(page);
+                }
+
+                var filter = {
+                    feed_id : feedMeta.id
+                };
+
+                // extract filters
+                if (undefined != customFilter) {
+                    var tokens = customFilter.split(',');
+                    for (i in tokens) {
+                        var filterVars = tokens[i].split(':');
+                        if (undefined != filterVars[0] && undefined != filterVars[1]) {
+                            filter[filterVars[0]] = filterVars[1];
+                        }
+                    }
+                }
+
+                dao.list(
+                    entityModelName,
+                    null,
+                    page_size,
+                    page,
+                    order_by,
+                    filter,
+                    function(err, modelName, feedData) {
+                        if (err) {
+                            next(err, feedData);
+                        } else {
+                            next(false, feedData);
+                        }
+                    });
+                }
+            }
+        );
+}
+
 Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     var $resource = this.$resource,
-    self = this,
-    dao = $resource.dao,
-    log = $resource.log,
-    modelName = this.$resource.getDataSourceName('feed'),
-    entityModelName = this.$resource.getDataSourceName('feed_entity');
+        self = this,
+        dao = $resource.dao,
+        log = $resource.log;
 
     // @todo - cache compiled feed to disk
-    if (method == 'rss') {
-        (function(channel, req, res) {
-            dao.find(
-                modelName,
-                {
-                    owner_id : channel.owner_id,
-                    channel_id : channel.id
-                },
-                function(err, result) {
+    if ('rss' === method || 'json' === method) {
+        (function(method, channel, req, res) {
+            self._retr(
+                channel, 
+                req.query.page_size,
+                req.query.page,
+                req.query.filter,
+                function(err, results) {
                     if (err) {
                         log(err, channel, 'error');
                         res.send(500);
-                    } else if (!result) {
+                    } else if (!results) {
                         res.send(404);
                     } else {
-                        // get last 10 entities
-                        var account = {
-                            user : {
-                                id : channel.owner_id
+                        var struct = {
+                            'meta' : {
+                                title: channel.name,
+                                feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
+                                site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
+                                image : channel.config.image ? channel.config.image : '', // channel config icon image
+                                description: channel.note,
+                                author : req.remoteUser.getName()
                             }
                         };
-
-                        var page_size = 10,
-                            page = 1,
-                            order_by = 'recent';
-
-                        if (undefined != req.query.page_size) {
-                            page_size = parseInt(req.query.page_size);
-                        }
-
-                        if (undefined != req.query.page) {
-                            page = parseInt(req.query.page);
-                        }
-
-                        var filter = {
-                            feed_id : result.id
+                        var renderOpts = {
+                            content_type : self.getSchema().renderers.rss.contentType
                         };
-                        // extract filters
-                        if (undefined != req.query.filter) {
-                            var tokens = req.query.filter.split(',');
-                            for (i in tokens) {
-                                var filterVars = tokens[i].split(':');
-                                if (undefined != filterVars[0] && undefined != filterVars[1]) {
-                                    filter[filterVars[0]] = filterVars[1];
-                                }
+                        
+                        var payload;
+                        if ('rss' === method) {
+                            feed = new RSSFeed(struct.meta);
+                            for (var i = 0; i < results.data.length; i++) {
+                                results.data[i].guid = results.data[i].id;
+                                results.data[i].categories = [ results.data[i].category ];
+                                feed.item(results.data[i]);
+                            }
+                            payload = feed.xml();
+                        } else if ('json' === method) {
+                            payload = {
+                                meta : struct.meta,
+                                entities : results
                             }
                         }
 
-                        dao.list(
-                            entityModelName,
-                            null,
-                            page_size,
-                            page,
-                            'entity_created',
-                            filter,
-                            function(err, modelName, results) {
-                                if (err) {
-                                    log(err, channel, 'error');
-                                    res.send(500);
-                                } else {
-                                    var struct = {
-                                        'meta' : {
-                                            title: channel.name,
-                                            feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
-                                            site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                                            image : '', // channel config icon image
-                                            description: channel.note,
-                                            author : req.remoteUser.getName()
-                                        }
-                                    };
-                                    var renderOpts = {
-                                        content_type : self.getSchema().renderers.rss.contentType
-                                    };
-
-                                    feed = new RSSFeed(struct.meta);
-                                    for (var i = 0; i < results.data.length; i++) {
-                                        results.data[i].guid = results.data[i].id;
-                                        results.data[i].categories = [ results.data[i].category ];
-                                        feed.item(results.data[i]);
-                                    }
-
-                                    res.contentType(self.getSchema().renderers.rss.contentType);
-                                    res.send(feed.xml());
-                                }
-                            });
-                        }
-                    }
-                );
-        })(channel, req, res);
+                        res.contentType(self.getSchema().renderers[method].contentType);
+                        res.send(payload);
+                    }                
+                });
+        })(method, channel, req, res);
     }
 };
 
