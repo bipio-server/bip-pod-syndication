@@ -173,7 +173,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     })(imports, channel, sysImports, next);
 }
 
-Feed.prototype._retr = function(channel, page_size, page, customFilter, next) {
+Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
     var $resource = this.$resource,
         dao = $resource.dao,
         modelName = $resource.getDataSourceName('feed'),
@@ -189,24 +189,15 @@ Feed.prototype._retr = function(channel, page_size, page, customFilter, next) {
             if (err || !feedMeta) {
                 next(err, feedMeta);
             } else {
-                // get last 10 entities
                 var account = {
                     user : {
                         id : feedMeta.owner_id
                     }
                 };
 
-                var page_size = 10,
-                    page = 1,
+                var currentPage = parseInt(page) || 1,
+                    currentPageSize = parseInt(pageSize) || 10,
                     order_by = 'entity_created';
-
-                if (undefined != page_size) {
-                    page_size = parseInt(page_size);
-                }
-
-                if (undefined != page) {
-                    page = parseInt(page);
-                }
 
                 var filter = {
                     feed_id : feedMeta.id
@@ -226,8 +217,8 @@ Feed.prototype._retr = function(channel, page_size, page, customFilter, next) {
                 dao.list(
                     entityModelName,
                     null,
-                    page_size,
-                    page,
+                    currentPageSize,
+                    currentPage,
                     order_by,
                     filter,
                     function(err, modelName, feedData) {
@@ -291,6 +282,17 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                                 meta : struct.meta,
                                 entities : results
                             }
+                            
+                            for (var i = 0; i < results.data.length; i++) {
+                                results.data[i] = {
+                                    guid : results.data[i].id,
+                                    categories : [ results.data[i].category ],                                    
+                                    'title' : results.data[i].title,
+                                    'description' : results.data[i].description,
+                                    'link' : results.data[i].url,
+                                    'created_time' : results.data[i].entity_created                                    
+                                }
+                            }                            
                         }
 
                         res.contentType(self.getSchema().renderers[method].contentType);
