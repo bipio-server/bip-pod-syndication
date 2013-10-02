@@ -17,11 +17,7 @@ pod icon into the server cdn
 
 Manually restart the bipio server at your convenience.
 
-## Actions
-
-### sample
-
-A basic action.
+## Documentation
 
 [Bipio Docs](https://bip.io/docs/pods/syndication)
 

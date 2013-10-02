@@ -155,7 +155,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                     }
 
                     model = dao.modelFactory(entityModelName, entityStruct);
-                    dao.create(model, function(err, result) {
+                    dao.create(model, function(err, modelName, result) {
                         if (err) {
                             log(err, channel, 'error');
                         }
