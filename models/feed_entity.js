@@ -33,8 +33,26 @@ FeedEntity = {
             renderable : true,
             writable : false
         },    
-
+        
+        description : {
+            type : String,
+            renderable : true,
+            writable : false
+        },
+        
+        summary : {
+            type : String,
+            renderable : true,
+            writable : false
+        },
+        
         url : {
+            type : String,
+            renderable : true,
+            writable : false
+        },
+        
+        image : {
             type : String,
             renderable : true,
             writable : false
@@ -45,20 +63,14 @@ FeedEntity = {
             renderable : true,
             writable : false
         },
-        
-        description : {
-            type : String,
-            renderable : true,
-            writable : false
-        },
+
         
         category : {
-            type : String,
+            type : Array,
             index : true,
             renderable : true,
             writable : false
         }
     }
 };
-
 module.exports = FeedEntity;

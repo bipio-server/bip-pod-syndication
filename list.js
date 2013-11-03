@@ -45,25 +45,9 @@ List.prototype.getSchema = function() {
                                 "$ref" : "#/definitions/write_mode"
                             }
                             ]
-                },
-
-                "renderers" : {
-                    type : "string",
-                    description : "List Visibility",
-                    oneOf : [
-                            {
-                                "$ref" : "#/definitions/render_mode"
-                            }
-                    ]
                 }
             },
             "definitions" : {
-                "render_mode" : {
-                    "description" : "Keep this list private, or open to anyone to read",
-                    "enum" : [ "private" , "public" ],
-                    "enum_label" : ["Me Only", "Anyone"],
-                    "default" : "private"
-                },
                 "write_mode" : {
                     "description" : "List Write Mode",
                     "enum" : [ "append" , "replace" ],
@@ -74,18 +58,18 @@ List.prototype.getSchema = function() {
         },
         'renderers' : {
             'csv' : {
-                description : 'Comma Separated Values'
+                description : 'CSV',
+                description_long : 'Serves List Entries as Comma Seperated Values (1 line per entry)',
+                contentType : DEFS.CONTENTTYPE_CSV
 
             },
             'tsv' : {
-                description : 'Tab Separated Values'
-
-            },
-            'excel' : {
-                description : 'Excel Spreadsheet'
-
+                description : 'TSV',
+                description_long : 'Serves List Entries as Tab Seperated Values (1 line per entry)',
+                contentType : DEFS.CONTENTTYPE_TSV
             }
         },
+        
         'defaults' : {
             'icon_url' : CFG_CDN + '/channels/rss.png'
         },
@@ -105,8 +89,7 @@ List.prototype.getSchema = function() {
 
 List.prototype._getListFile = function(channel, next) {
     var dataDir = this.pod.getDataDir(channel, 'list');
-    
-    app.helper.mkdir_p(dataDir, 0777, function(err) {        
+    app.helper.mkdir_p(dataDir, 0777, function(err) {
        next(err, dataDir + channel.id + ".json") ;
     });
 }
@@ -143,13 +126,90 @@ List.prototype.setup = function(channel, accountInfo, next) {
                             log('created container ' + fileName, channel);
                         }
 
-                        next(err, 'channel', channel); // ok                
+                        next(err, 'channel', channel); // ok
                     });
                 }, accountInfo);
             }
         });
     })(channel, accountInfo, next);
 }
+
+List.prototype.teardown = function(channel, accountInfo, next) {
+  var $resource = this.$resource,
+    self = this,
+    dao = $resource.dao,
+    log = $resource.log;
+    
+  // drop list file
+  self._getListFile(channel, function(err, fileName ) {
+    if (!err) {
+      fs.unlink(fileName);      
+      dao.removeFilter(
+        $resource.getDataSourceName('track_list'),
+        {
+          owner_id : channel.owner_id,
+          channel_id : channel.id
+        },
+        next
+      );
+    } else {
+      next(err, 'channel', self);
+    }
+  });    
+}
+
+
+List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
+    var $resource = this.$resource,
+        self = this,
+        dao = $resource.dao,
+        log = $resource.log;
+
+    if ('csv' === method || 'tsv' === method) {
+        this._getListFile(channel, function(err, fileName) {
+            var ct;
+
+            if ('csv' === method) {
+                ct = DEFS.CONTENTTYPE_CSV
+            } else if ('tsv' === method) {
+                ct = DEFS.CONTENTTYPE_TSV
+            }
+
+            res.contentType(ct);
+
+            var fStream = fs.createReadStream(fileName, {
+                encoding : 'utf8'
+            });
+
+            fStream.on('data', function(data) {
+                data = "[" + data.toString().substr(0, data.length - 2) + "]";
+                var items = JSON.parse(data),
+                    item,
+                    numItems = items.length,
+                    columns = {};
+
+                for (var i = 0; i < items.length; i++) {
+                    item = items[i];
+                    for (var k in item) {
+                        if (item.hasOwnProperty(k)) {
+                            if (!columns[k]) {
+                                columns[k] = {
+                                    data : []
+                                };
+                            }
+                        }
+                    }
+                }
+            });
+
+            fStream.on('end', function() {
+                res.send();                
+            });
+        });
+    } else {
+        res.send(404);
+    }
+};
 
 
 /**
@@ -190,8 +250,8 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                     next(err, exports);
                 }
             });
-            
-            
+
+
         });
     })(imports, channel, sysImports, next);
 }
