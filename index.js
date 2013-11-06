@@ -27,11 +27,13 @@ var Pod = require('bip-pod'),
             require('./models/track_list'), 
             require('./models/feed'),
             require('./models/feed_entity'),
+            require('./models/track_subscribe'),
         ]
     });
 
 Syndication.add(require('./list.js'));
 Syndication.add(require('./feed.js'));
+Syndication.add(require('./subscribe.js'));
 
 // -----------------------------------------------------------------------------
 module.exports = Syndication;

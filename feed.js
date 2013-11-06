@@ -207,7 +207,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             description : imports.description,
             category : imports.category,
             entity_created : imports.created_time && imports.created_time !== '' ?
-            moment(imports.created_time).unix() : app.helper.nowUTCSeconds()
+              moment(imports.created_time).unix() : app.helper.nowUTCSeconds()
           }
 
           model = dao.modelFactory(entityModelName, entityStruct);
