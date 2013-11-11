@@ -204,6 +204,8 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             title : imports.title,
             url : imports.url,
             author : imports.author,
+            image : imports.image,
+            summary : imports.summary,
             description : imports.description,
             category : imports.category,
             entity_created : imports.created_time && imports.created_time !== '' ?
@@ -231,16 +233,20 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
 Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
   var $resource = this.$resource,
-  dao = $resource.dao,
-  modelName = $resource.getDataSourceName('feed'),
-  entityModelName = $resource.getDataSourceName('feed_entity');
+    dao = $resource.dao,
+    modelName = $resource.getDataSourceName('feed'),
+    entityModelName = $resource.getDataSourceName('feed_entity'),
+    filter = {
+      owner_id : channel.owner_id,
+    };
+
+  if (channel.id) {
+    filter.channel_id = channel.id;
+  }
 
   dao.find(
     modelName,
-    {
-      owner_id : channel.owner_id,
-      channel_id : channel.id
-    },
+    filter,
     function(err, feedMeta) {
       if (err || !feedMeta) {
         next(err, feedMeta);
@@ -312,11 +318,11 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           } else {
             var struct = {
               'meta' : {
-                title: channel.name,
-                feed_url : channel.getRendererUrl('rss', req.remoteUser), // self renderer
+                title: channel.name || req.remoteUser.user.name + ' Aggregate',
+                feed_url : channel.getRendererUrl(method, req.remoteUser), // self renderer
                 site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                image : channel.config.image ? channel.config.image : '', // channel config icon image
-                description: channel.note,
+                image : channel.config && channel.config.image ? channel.config.image : '', // channel config icon image
+                description: channel.note || 'All Feeds',
                 author : req.remoteUser.getName()
               }
             };
