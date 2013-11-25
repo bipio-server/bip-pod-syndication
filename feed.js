@@ -169,11 +169,11 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
  */
 Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, next) {
   var $resource = this.$resource,
-  self = this,
-  dao = $resource.dao,
-  log = $resource.log,
-  modelName = this.$resource.getDataSourceName('feed'),
-  entityModelName = this.$resource.getDataSourceName('feed_entity');
+    self = this,
+    dao = $resource.dao,
+    log = $resource.log,
+    modelName = this.$resource.getDataSourceName('feed'),
+    entityModelName = this.$resource.getDataSourceName('feed_entity');
 
   (function(imports, channel, sysImports, next) {
     // get feed metadata
@@ -208,7 +208,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             summary : imports.summary,
             description : imports.description,
             category : imports.category,
-            entity_created : imports.created_time && imports.created_time !== '' ?
+            entity_created : imports.created_time && '' !== imports.created_time && 'null' !== imports.created_time  ?
               moment(imports.created_time).unix() : app.helper.nowUTCSeconds()
           }
 
@@ -287,6 +287,8 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
             if (err) {
               next(err, feedData);
             } else {
+              feedData._channel_id = feedMeta.channel_id;
+
               next(false, feedData);
             }
           });
@@ -352,7 +354,9 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                   'title' : results.data[i].title,
                   'description' : results.data[i].description,
                   'link' : results.data[i].url,
-                  'created_time' : results.data[i].entity_created
+                  'image' : results.data[i].image,
+                  'created_time' : results.data[i].entity_created,
+                  '_channel_id' : results._channel_id
                 }
               }
             }

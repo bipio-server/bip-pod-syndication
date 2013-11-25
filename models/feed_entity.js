@@ -14,7 +14,7 @@ FeedEntity = {
             renderable: false,
             writable: false
         },
-        
+               
         created : {
             type: Number,
             renderable: true,

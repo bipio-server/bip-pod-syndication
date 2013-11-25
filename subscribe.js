@@ -161,7 +161,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
           date : chunk.date,
           pubdate : chunk.pubdate,
           author : chunk.author,
-          image : chunk.image.url
+          image : chunk.image.url && '' !== chunk.image.url ? chunk.image.url : channel.config.icon
           // categories : chunk.categories
         };
         
@@ -206,7 +206,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
       }      
     })
     .on('end', function() {
-      log(channel.config.url + ' retr finished');
+      log(channel.config.url + ' retr finished', channel);
     });
   }
 
