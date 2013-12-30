@@ -244,7 +244,7 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
     filter.channel_id = channel.id;
   }
 
-  dao.find(
+  dao.findFilter(
     modelName,
     filter,
     function(err, feedMeta) {
@@ -253,16 +253,18 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
       } else {
         var account = {
           user : {
-            id : feedMeta.owner_id
+            id : channel.owner_id
           }
         };
 
         var currentPage = parseInt(page) || 1,
         currentPageSize = parseInt(pageSize) || 10,
-        order_by = 'entity_created';
+        order_by = 'recent';
 
         var filter = {
-          feed_id : feedMeta.id
+          feed_id : {
+            '$in' : app._.pluck(feedMeta, 'id')
+          }
         };
 
         // extract filters
@@ -287,7 +289,10 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
             if (err) {
               next(err, feedData);
             } else {
-              feedData._channel_id = feedMeta.channel_id;
+             
+              for (var i = 0; i < feedData.data.length; i++) {                
+                feedData.data[i]._channel_id = feedMeta[0].channel_id;             
+              }
 
               next(false, feedData);
             }
