@@ -22,7 +22,8 @@
 
 var moment = require('moment'),
   RSSFeed = require('rss'),
-  request = require('request');
+  request = require('request'),
+  htmlparser = require('htmlparser2');
 
 function Feed(podConfig) {
   this.name = 'feed';
@@ -165,6 +166,34 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
 }
 
 /**
+ * push to local cdn path (public)
+ */
+Feed.prototype._pushImageCDN = function(channel, srcUrl, next) {
+  this.pod.getCDNDir(channel, 'feed', function(err, path) {
+    var dstFile = path + app.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
+    app.cdn.httpFileSnarf(srcUrl, dstFile, next);  
+  });   
+}
+
+Feed.prototype._createFeedEntity = function(entityStruct, channel, next) {
+  var entityModelName = this.$resource.getDataSourceName('feed_entity'),
+    dao = this.$resource.dao,
+    model = dao.modelFactory(entityModelName, entityStruct);
+    
+    dao.create(model, function(err, modelName, result) {
+      if (err) {
+        log(err, channel, 'error');
+      }
+      next(
+        err,
+        {
+          id : result.id
+        }
+        );
+    });
+}
+
+/**
  * Invokes (runs) the action.
  */
 Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, next) {
@@ -198,7 +227,20 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             }
             );
 
-          // insert entry
+          // override supplied image with first found.
+          var firstImage = false;
+          var parser = new htmlparser.Parser({
+            onopentag : function(name, attribs) {
+              if (name === 'img' && !firstImage ) {
+                imports.image = attribs.src;
+                firstImage = true;
+              }
+            }
+          });
+
+          parser.write(imports.description);
+          parser.end();
+
           var entityStruct = {
             feed_id : result.id,
             title : imports.title,
@@ -212,18 +254,22 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
               moment(imports.created_time).unix() : app.helper.nowUTCSeconds()
           }
 
-          model = dao.modelFactory(entityModelName, entityStruct);
-          dao.create(model, function(err, modelName, result) {
-            if (err) {
-              log(err, channel, 'error');
-            }
-            next(
-              err,
-              {
-                id : result.id
-              }
-              );
-          });
+          // if we have an image, push it into cdn
+          if (imports.image) {
+            self._pushImageCDN(channel, imports.image, function(err, struct) {
+              var cdnURI, cdnRegExp;
+              if (!err) {
+                if (struct.file) {
+                  cdnRegExp = new RegExp('.*' + CDN_DIR.replace('/', '\\/'));                 
+                  cdnURI = struct.file.replace(cdnRegExp, CFG.cdn_public);
+                  entityStruct.image = cdnURI;
+                  self._createFeedEntity(entityStruct, channel, next);
+                }              
+              }             
+            });
+          } else {
+            this._createFeedEntity(entityStruct, channel, next);  
+          }
         }
       }
       );
