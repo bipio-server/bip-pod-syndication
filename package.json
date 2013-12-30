@@ -1,6 +1,6 @@
 {
     "name": "bip-pod-syndication",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "description": "Syndication Pod for Bipio",
     "keywords": [
     "bip",
@@ -31,7 +31,8 @@
         "feedparser" : ">=0.16.2",
         "rss" : ">=0.2.1",
         "moment" : ">=2.4.0",
-        "htmlparser2" : ">=3.4.0"
+        "htmlparser2" : ">=3.4.0",
+        "imagemagick" : ">=0.1.3"
     },
     "engines": {
         "node": ">= 0.10.0"

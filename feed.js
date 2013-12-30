@@ -23,6 +23,7 @@
 var moment = require('moment'),
   RSSFeed = require('rss'),
   request = require('request'),
+  imagemagick = require('imagemagick');
   htmlparser = require('htmlparser2');
 
 function Feed(podConfig) {
@@ -263,7 +264,16 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                   cdnRegExp = new RegExp('.*' + CDN_DIR.replace('/', '\\/'));                 
                   cdnURI = struct.file.replace(cdnRegExp, CFG.cdn_public);
                   entityStruct.image = cdnURI;
-                  self._createFeedEntity(entityStruct, channel, next);
+                  
+                  imagemagick.identify(struct.file, function(err, features) {
+                    entityStruct.image_dim = {
+                      width : features.width,
+                      height : features.height,
+                      format : features.format
+                    };
+
+                    self._createFeedEntity(entityStruct, channel, next);
+                  });
                 }              
               }             
             });
@@ -406,6 +416,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                   'description' : results.data[i].description,
                   'link' : results.data[i].url,
                   'image' : results.data[i].image,
+                  'image_dim' : results.data[i].image_dim,
                   'created_time' : results.data[i].entity_created,
                   '_channel_id' : results._channel_id
                 }

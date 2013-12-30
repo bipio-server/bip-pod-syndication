@@ -58,6 +58,12 @@ FeedEntity = {
             writable : false
         },
         
+        image_dim : {
+          type : Object,
+          renderable : true,
+          writable : false
+        },
+        
         author : {
             type : String,
             renderable : true,
