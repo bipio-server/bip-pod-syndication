@@ -252,7 +252,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             description : imports.description,
             category : imports.category,
             entity_created : imports.created_time && '' !== imports.created_time && 'null' !== imports.created_time  ?
-              moment(imports.created_time).unix() : app.helper.nowUTCSeconds()
+              moment(imports.created_time).unix() : (app.helper.nowUTCSeconds() / 1000)
           }
 
           // if we have an image, push it into cdn
@@ -278,7 +278,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
               }             
             });
           } else {
-            this._createFeedEntity(entityStruct, channel, next);  
+            self._createFeedEntity(entityStruct, channel, next);  
           }
         }
       }
@@ -315,7 +315,7 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
 
         var currentPage = parseInt(page) || 1,
         currentPageSize = parseInt(pageSize) || 10,
-        order_by = 'recent';
+        order_by = ['entity_created', 'desc'];
 
         var filter = {
           feed_id : {
