@@ -304,7 +304,7 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
     modelName,
     filter,
     function(err, feedMeta) {
-      if (err || !feedMeta) {
+      if (err || !feedMeta || feedMeta.length === 0) {
         next(err, feedMeta);
       } else {
         var account = {
@@ -345,7 +345,6 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
             if (err) {
               next(err, feedData);
             } else {
-             
               for (var i = 0; i < feedData.data.length; i++) {                
                 feedData.data[i]._channel_id = feedMeta[0].channel_id;             
               }
@@ -407,18 +406,19 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 meta : struct.meta,
                 entities : results
               }
-
-              for (var i = 0; i < results.data.length; i++) {
-                results.data[i] = {
-                  guid : results.data[i].id,
-                  categories : [ results.data[i].category ],
-                  'title' : results.data[i].title,
-                  'description' : results.data[i].description,
-                  'link' : results.data[i].url,
-                  'image' : results.data[i].image,
-                  'image_dim' : results.data[i].image_dim,
-                  'created_time' : results.data[i].entity_created,
-                  '_channel_id' : results._channel_id
+              if (results.data) {
+                for (var i = 0; i < results.data.length; i++) {
+                  results.data[i] = {
+                    guid : results.data[i].id,
+                    categories : [ results.data[i].category ],
+                    'title' : results.data[i].title,
+                    'description' : results.data[i].description,
+                    'link' : results.data[i].url,
+                    'image' : results.data[i].image,
+                    'image_dim' : results.data[i].image_dim,
+                    'created_time' : results.data[i].entity_created,
+                    '_channel_id' : results._channel_id
+                  }
                 }
               }
             }
