@@ -104,6 +104,14 @@ Subscribe.prototype.getSchema = function() {
   }
 }
 
+Subscribe.prototype.setChannelIcon = function(channel, cdnURI) {
+  var newConfig = app._.clone(channel.config),
+    dao = this.$resource.dao;
+
+  channel.config.icon = newConfig.icon = cdnURI;
+  dao.updateColumn('channel', { id : channel.id }, { config : newConfig });
+}
+
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
     var $resource = this.$resource,
     self = this,
@@ -123,26 +131,32 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
 
           // auto discover description
           var updateCols = {};
-     
+
           if (meta.title && channel.name === self.description) {
             updateCols.name = meta.title;
           }
-     
-          if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {           
-            updateCols.note = meta.description;           
+
+          if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
+            updateCols.note = meta.description;
             channel.note = updateCols.note;
           }
-          
+
           if (Object.keys(updateCols).length) {
             dao.updateColumn('channel', { id : channel.id }, updateCols);
           }
 
           if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
             app.cdn.getFavicon(channel.config.url, function(err, cdnURI) {
-              if (!err && cdnURI) {
-                var newConfig = app._.clone(channel.config);
-                channel.config.icon = newConfig.icon = cdnURI;
-                dao.updateColumn('channel', { id : channel.id }, { config : newConfig });
+              if (!err) {
+                if (cdnURI) {
+                  self.setChannelIcon(channel, cdnURI);
+                } else {
+                  app.cdn.getFavicon(meta.link, function(err, cdnURI) {
+                    if (!err && cdnURI) {
+                      self.setChannelIcon(channel, cdnURI);
+                    }
+                  });
+                }
               }
             });
           }
