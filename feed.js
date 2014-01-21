@@ -83,6 +83,11 @@ Feed.prototype.getSchema = function() {
           type : 'string',
           description : 'Image'
         },
+        
+        'icon' : {
+          type : 'string',
+          description : 'Source Icon'
+        },
 
         'category' : {
           type : 'string',
@@ -248,6 +253,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             url : imports.url,
             author : imports.author,
             image : imports.image,
+            icon : imports.icon,
             summary : imports.summary,
             description : imports.description,
             category : imports.category,
@@ -414,6 +420,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                     'title' : results.data[i].title,
                     'description' : results.data[i].description,
                     'link' : results.data[i].url,
+                    'icon' : results.data[i].icon,
                     'image' : results.data[i].image,
                     'image_dim' : results.data[i].image_dim,
                     'created_time' : results.data[i].entity_created,

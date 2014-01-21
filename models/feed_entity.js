@@ -58,6 +58,12 @@ FeedEntity = {
             writable : false
         },
         
+        icon : {
+            type : String,
+            renderable : true,
+            writable : false
+        },
+        
         image_dim : {
           type : Object,
           renderable : true,

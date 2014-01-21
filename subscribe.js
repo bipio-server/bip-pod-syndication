@@ -66,7 +66,7 @@ Subscribe.prototype.getSchema = function() {
         'title' : {
           type : 'string',
           description : 'Title'
-        },        
+        },
         'description' : {
           type : 'string',
           description : 'Description'
@@ -94,6 +94,10 @@ Subscribe.prototype.getSchema = function() {
         'image' : {
           type : 'string',
           description : 'Image'
+        },
+        'icon' : {
+          type : 'string',
+          description : 'Source Icon'
         }
       }
     }
@@ -105,29 +109,49 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
     self = this,
     dao = $resource.dao,
     log = $resource.log;
-    
 
-    request(channel.config.url)
-      .pipe(new FeedParser())
-      .on('error', function(error) {
-        log(error, channel, 'error');
-      })
-      .on('meta', function (meta) {
-        // auto discover description
-        var updateCols = {};
-        if ( (!channel.note || '' === channel.note) && meta.description && '' !== meta.description ) {
-          updateCols.note = meta.description;
-          dao.updateColumn('channel', { id : channel.id }, updateCols);
-          channel.note = updateCols.note;
-        }
-        
-        if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
-          // @todo - channel icon attach from link
+    try {
+      request(channel.config.url)
+        .pipe(new FeedParser())
+        .on('error', function(error) {
+          log(error, channel, 'error');
+          console.log('returning error');
+          next(error, 'channel', channel);
+        })
+        .on('meta', function (meta) {
+          next(false, 'channel', channel);
+
+          // auto discover description
+          var updateCols = {};
+     
+          if (meta.title && channel.name === self.description) {
+            updateCols.name = meta.title;
+          }
+     
+          if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {           
+            updateCols.note = meta.description;           
+            channel.note = updateCols.note;
+          }
           
-        }
-      });
+          if (Object.keys(updateCols).length) {
+            dao.updateColumn('channel', { id : channel.id }, updateCols);
+          }
 
-   next(false, 'channel', channel);
+          if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
+            app.cdn.getFavicon(channel.config.url, function(err, cdnURI) {
+              if (!err && cdnURI) {
+                var newConfig = app._.clone(channel.config);
+                channel.config.icon = newConfig.icon = cdnURI;
+                dao.updateColumn('channel', { id : channel.id }, { config : newConfig });
+              }
+            });
+          }
+        });
+    } catch (e) {
+      next(e, 'channel', channel);
+    }
+
+
 }
 
 
@@ -161,10 +185,11 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
           date : chunk.date,
           pubdate : chunk.pubdate,
           author : chunk.author,
-          image : chunk.image.url && '' !== chunk.image.url ? chunk.image.url : channel.config.icon
+          image : chunk.image.url || '',
+          icon : channel.config.icon
           // categories : chunk.categories
         };
-        
+
         (function(channel, chunk, next) {
           // push to tracking
           dao.find(
@@ -172,7 +197,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
             {
               owner_id : channel.owner_id,
               channel_id : channel.id,
-              guid : chunk.guid            
+              guid : chunk.guid
             },
             function(err, result) {
               var now = moment().unix(),
@@ -189,7 +214,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
                     guid : chunk.guid,
                     last_update : pubdate
                   });
-                  
+
                   dao.create(model);
 
                   next(false, exports);
@@ -201,9 +226,9 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
                 }
               }
             }
-          );    
+          );
         })(channel, chunk, next);
-      }      
+      }
     })
     .on('end', function() {
       log(channel.config.url + ' retr finished', channel);
