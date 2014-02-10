@@ -21,10 +21,13 @@
  */
 
 var moment = require('moment'),
-  RSSFeed = require('rss'),
-  request = require('request'),
-  imagemagick = require('imagemagick');
-  htmlparser = require('htmlparser2');
+RSSFeed = require('rss'),
+fs = require('fs'),
+path = require('path'),
+ejs = require('ejs'),
+request = require('request'),
+imagemagick = require('imagemagick');
+htmlparser = require('htmlparser2');
 
 function Feed(podConfig) {
   this.name = 'feed';
@@ -50,6 +53,27 @@ Feed.prototype.getSchema = function() {
         description : 'JSON',
         description_long : 'Serves stored items as JSON',
         contentType : DEFS.CONTENTTYPE_JSON
+      },
+      'blog' : {
+        description : 'Blog',
+        description_long : 'Blogging Format',
+        contentType : DEFS.CONTENTTYPE_HTML
+      }
+    },
+    'config' : {
+      properties : {
+        twitter_handle : {
+          type : 'string',
+          description : 'Twitter Handle (Blog Renderer)'
+        },
+        github_handle : {
+          type : 'string',
+          description : 'Github Username (Blog Renderer)'
+        },
+        dribble_handle : {
+          type : 'string',
+          description : 'Dribble Username (Blog Renderer)'
+        }
       }
     },
     "imports": {
@@ -74,7 +98,7 @@ Feed.prototype.getSchema = function() {
           type : 'string',
           description : 'UTC Created Time'
         },
-       
+
         'author' : {
           type : 'string',
           description : 'Author'
@@ -83,7 +107,7 @@ Feed.prototype.getSchema = function() {
           type : 'string',
           description : 'Image'
         },
-        
+
         'icon' : {
           type : 'string',
           description : 'Source Icon'
@@ -133,26 +157,26 @@ Feed.prototype.setup = function(channel, accountInfo, next) {
  */
 Feed.prototype.teardown = function(channel, accountInfo, next) {
   var $resource = this.$resource,
-    self = this,
-    dao = $resource.dao,
-    log = $resource.log,
-    feedModelName = this.$resource.getDataSourceName('feed'),
-    feedEntityModelName = this.$resource.getDataSourceName('feed_entity');
+  self = this,
+  dao = $resource.dao,
+  log = $resource.log,
+  feedModelName = this.$resource.getDataSourceName('feed'),
+  feedEntityModelName = this.$resource.getDataSourceName('feed_entity');
 
   dao.findFilter(
-    feedModelName, 
+    feedModelName,
     {
-     owner_id : channel.owner_id,
-     channel_id : channel.id
-    }, 
-    function(err, results) {   
+      owner_id : channel.owner_id,
+      channel_id : channel.id
+    },
+    function(err, results) {
       if (err) {
-          log(err, channel, 'error');
+        log(err, channel, 'error');
       } else {
         var feed = results[0];
         if (feed) {
           dao.removeFilter(
-            feedEntityModelName, 
+            feedEntityModelName,
             {
               feed_id : feed.id
             },
@@ -160,15 +184,17 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
               if (err) {
                 log(err, channel, 'error');
               } else {
-                dao.removeFilter(feedModelName, { id : feed.id }, next );
+                dao.removeFilter(feedModelName, {
+                  id : feed.id
+                }, next );
               }
             }
-          );
+            );
         } else {
           next(err, feedEntityModelName, null);
         }
       }
-  });  
+    });
 }
 
 /**
@@ -177,26 +203,26 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
 Feed.prototype._pushImageCDN = function(channel, srcUrl, next) {
   this.pod.getCDNDir(channel, 'feed', function(err, path) {
     var dstFile = path + app.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
-    app.cdn.httpFileSnarf(srcUrl, dstFile, next);  
-  });   
+    app.cdn.httpFileSnarf(srcUrl, dstFile, next);
+  });
 }
 
 Feed.prototype._createFeedEntity = function(entityStruct, channel, next) {
   var entityModelName = this.$resource.getDataSourceName('feed_entity'),
-    dao = this.$resource.dao,
-    model = dao.modelFactory(entityModelName, entityStruct);
-    
-    dao.create(model, function(err, modelName, result) {
-      if (err) {
-        log(err, channel, 'error');
+  dao = this.$resource.dao,
+  model = dao.modelFactory(entityModelName, entityStruct);
+
+  dao.create(model, function(err, modelName, result) {
+    if (err) {
+      log(err, channel, 'error');
+    }
+    next(
+      err,
+      {
+        id : result.id
       }
-      next(
-        err,
-        {
-          id : result.id
-        }
-        );
-    });
+      );
+  });
 }
 
 /**
@@ -204,11 +230,11 @@ Feed.prototype._createFeedEntity = function(entityStruct, channel, next) {
  */
 Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, next) {
   var $resource = this.$resource,
-    self = this,
-    dao = $resource.dao,
-    log = $resource.log,
-    modelName = this.$resource.getDataSourceName('feed'),
-    entityModelName = this.$resource.getDataSourceName('feed_entity');
+  self = this,
+  dao = $resource.dao,
+  log = $resource.log,
+  modelName = this.$resource.getDataSourceName('feed'),
+  entityModelName = this.$resource.getDataSourceName('feed_entity');
 
   (function(imports, channel, sysImports, next) {
     // get feed metadata
@@ -235,6 +261,12 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
           // override supplied image with first found.
           var firstImage = false;
+          var createTime = moment(imports.created_time).unix();
+
+          if (isNaN(createTime)) {
+            createTime = app.helper.nowUTCSeconds() / 1000;
+          }
+
           var parser = new htmlparser.Parser({
             onopentag : function(name, attribs) {
               if (name === 'img' && !firstImage ) {
@@ -257,9 +289,10 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             summary : imports.summary,
             description : imports.description,
             category : imports.category,
-            entity_created : imports.created_time && '' !== imports.created_time && 'null' !== imports.created_time  ?
-              moment(imports.created_time).unix() : (app.helper.nowUTCSeconds() / 1000)
+            entity_created : createTime
           }
+
+          entityStruct = app.helper.pasteurize(entityStruct, true);
 
           // if we have an image, push it into cdn
           if (imports.image) {
@@ -267,10 +300,10 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
               var cdnURI, cdnRegExp;
               if (!err) {
                 if (struct.file) {
-                  cdnRegExp = new RegExp('.*' + CDN_DIR.replace('/', '\\/'));                 
+                  cdnRegExp = new RegExp('.*' + CDN_DIR.replace('/', '\\/'));
                   cdnURI = struct.file.replace(cdnRegExp, CFG.cdn_public);
                   entityStruct.image = cdnURI;
-                  
+
                   imagemagick.identify(struct.file, function(err, features) {
                     entityStruct.image_dim = {
                       width : features.width,
@@ -280,11 +313,11 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
                     self._createFeedEntity(entityStruct, channel, next);
                   });
-                }              
-              }             
+                }
+              }
             });
           } else {
-            self._createFeedEntity(entityStruct, channel, next);  
+            self._createFeedEntity(entityStruct, channel, next);
           }
         }
       }
@@ -295,12 +328,12 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
 Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
   var $resource = this.$resource,
-    dao = $resource.dao,
-    modelName = $resource.getDataSourceName('feed'),
-    entityModelName = $resource.getDataSourceName('feed_entity'),
-    filter = {
-      owner_id : channel.owner_id,
-    };
+  dao = $resource.dao,
+  modelName = $resource.getDataSourceName('feed'),
+  entityModelName = $resource.getDataSourceName('feed_entity'),
+  filter = {
+    owner_id : channel.owner_id,
+  };
 
   if (channel.id) {
     filter.channel_id = channel.id;
@@ -351,8 +384,8 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
             if (err) {
               next(err, feedData);
             } else {
-              for (var i = 0; i < feedData.data.length; i++) {                
-                feedData.data[i]._channel_id = feedMeta[0].channel_id;             
+              for (var i = 0; i < feedData.data.length; i++) {
+                feedData.data[i]._channel_id = feedMeta[0].channel_id;
               }
 
               next(false, feedData);
@@ -435,9 +468,77 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           }
         });
     })(method, channel, req, res);
+  }
+  else if ('blog' === method) {
+    var user = req.remoteUser.user,
+      tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
+      page = tokens[2];
+
+    if (tokens[1] === 'page' && page) {
+      var indexFile = __dirname + '/blog/default/index.ejs';
+      fs.readFile(indexFile, 'utf8', function(err, file) {
+        if(err) {
+          res.writeHead(500, {
+            "Content-Type": "text/plain"
+          });
+          res.write(err + "\n");
+          res.end();
+          return;
+        }
+
+        var tplVars = {
+          blogName : channel.name,
+          avatar : CFG.website_public + user.settings.avatar,
+          name : user.username,
+          rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
+          twitterImage : channel.config.twitter_handle ? '<a href="https://twitter.com/' + channel.config.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          githubImage : channel.config.github_handle ? '<a href="https://github.com/' + channel.config.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          dribbleImage : channel.config.dribble_handle ? '<a href="http://dribble.com/' + channel.config.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : ''
+        };
+
+        var firstImage = false;
+
+        self._retr(
+          channel,
+          10,
+          page,
+          undefined,
+          function(err, results) {
+            if (err) {
+              res.send(500);
+            } else {
+              tplVars.articles = results;
+              for (var i = 0; i < results.data.length; i++) {
+                if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
+                  firstImage = false;
+                  var parser = new htmlparser.Parser({
+                    onopentag : function(name, attribs) {                      
+                      if (name === 'img' && !firstImage ) {                      
+                        results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);                        
+                        firstImage = true;
+                      }
+                    }
+                  });
+
+                  parser.write(results.data[i].summary);
+                  parser.end();
+                }
+              }
+              res.writeHead(200);
+              res.write(ejs.render(file, tplVars), "binary");
+              res.end();
+            }
+          })
+      });
+  } else if (tokens[1] === 'rss') {
+    this.rpc('rss', sysImports, options, channel, req, res);
   } else {
     res.send(404);
   }
+
+} else {
+  res.send(404);
+}
 };
 
 // -----------------------------------------------------------------------------

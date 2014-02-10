@@ -164,8 +164,6 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
     } catch (e) {
       next(e, 'channel', channel);
     }
-
-
 }
 
 

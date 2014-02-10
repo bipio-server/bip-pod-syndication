@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title></title>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <link href="http://dev-local.bip.io/static/css/build.css" rel="stylesheet" />
+
+    <style>
+      .timeline {
+        list-style: none;
+        margin: 25px 0 22px;
+        padding: 0;
+        position: relative;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      .timeline-entity {
+        border-left: 2px solid #000;
+        margin: 0 0 0 20px;
+        padding: 0 0 5px 25px;
+        position: relative;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+      .timeline-entity:before {
+        border: 2px solid #000;
+        border-radius: 50%;
+        content: "";
+        display: block;
+        position: absolute;
+        left: -17px;
+        width: 32px;
+        height: 32px;
+        -webkit-box-sizing: border-box;
+        -moz-box-sizing: border-box;
+        box-sizing: border-box;
+      }
+
+      .timeline-entity.pink:before {
+        background-color: #f05a79;
+      }
+
+      .timeline-entity.orange:before {
+        background-color: #f6861f;
+      }
+
+      .timeline-entity.green:before {
+        background-color: #94c83d;
+      }
+
+      .timeline-entity.blue:before {
+        background-color: #09bab4;
+      }
+
+      .timeline-entity.purple:before {
+        background-color: #9561a9;
+      }
+
+      .timeline-entity.white:before {
+        background-color: #fff;
+      }
+
+      .timeline-entity.black:before {
+        background-color: #000;
+      }
+
+      .timeline-action {
+        background-color: #faffff;
+        border: 1px solid #38a8a8;
+        padding: 12px 10px 12px 20px;
+        position: relative;
+        top: -15px;
+        border-top-right-radius: 15px;
+        border-bottom-right-radius: 15px;
+        box-shadow: 0px 1px 10px rgba(0, 0, 0, 0.15);
+      }
+
+      .timeline-action .title, .timeline-action .content {
+        word-wrap: break-word;
+      }
+      .timeline-action .title {
+        color: #00637d;
+        font-size: 18px;
+        margin: 0;
+      }
+      .timeline-action .date {
+        display: block;
+        font-size: 14px;
+        margin-bottom: 15px;
+      }
+      .timeline-action .content {
+        font-size: 14px;
+      }
+    
+      body {
+        background: #edf0eb;
+        height: 400px;
+        color: #404040;
+        font-family: Helvetica, Arial, Verdana, sans-serif;
+      }
+
+      .page {
+        max-width: 1200px;
+        margin: 20px 30px;
+      }
+
+      a {
+        color: #404040;
+        text-decoration: none;
+      }
+
+      a:hover, a:focus {
+        text-decoration: none;
+      }
+
+      a.nav {
+        color: #476166;
+        border: 1px solid #7a9194;
+        background-color: #fff;
+        font-size: 1.4rem;
+        line-height: 1.3em;
+        font-weight: 700;
+        text-decoration: none!important;
+        padding: .8rem 1.6rem;
+        border-radius: 5px;
+      }
+
+      .icon {
+        border-radius: 50%;
+        width: 32px;
+        margin-left: -42px;
+      }
+
+      #blog-body {
+        padding-top: 1.5rem;
+      }
+
+      .middle {
+        text-align: center;
+      }
+
+      .profile a img {        
+        margin-bottom: 10px;
+      }
+
+    </style>
+  </head>
+  <body>
+    <div id="blog-body">
+      <div class="container">
+        <div class="row">
+          <div class="span1 offset1 middle profile">
+            <img src="<%= avatar %>"/>
+            <h3><%= name %></h3>
+            <a href="/rss"><%- rssImage %></a><br/>            
+            <%- (twitterImage ? twitterImage : '') %>
+            <%- (githubImage ? githubImage : '') %>            
+            <%- (dribbleImage ? dribbleImage : '') %>            
+          </div>
+          <div class="span9">
+            <article class="page">
+              <h1><a href="/"><%= blogName %></a></h1>
+              <ul class="timeline">
+              <% var colorIdx = 0; bgColors = [ 'black' ] %>
+              <% for (var i = 0; i < articles.data.length; i++) { %>
+                <% colorIdx = (++colorIdx >= bgColors.length) ? 0 : colorIdx;  %>
+                <li class="timeline-entity timeline-start- <%= articles.data[i].icon ? '' : bgColors[colorIdx] %>">
+                  <img class="icon" src="<%= articles.data[i].icon %>" />
+                  <div class="timeline-action">
+                    <h2 class="title"><a href="<%= articles.data[i].url %>"><%= articles.data[i].title %></a></h2>
+                    <span class="date"><%= moment(articles.data[i].entity_created * 1000).format('MMM DD YYYY') %></span>
+                    <div class="content">
+                      <% if (false && articles.data[i].image) { %>
+                        <img src="<%= articles.data[i].image %>" />
+                      <% } %>
+                      <%- articles.data[i].summary || articles.data[i].description %>
+                    </div>
+                  </div>
+                </li>
+              <% } %>
+              </ul>
+            </article>
+
+            <% if (articles.page > 1) { %>
+              <a class="nav pull-left" href="/page/<%=(articles.page - 1)%>">Previous</a>
+            <% } %>
+
+            <% if (articles.page < articles.num_pages) { %>
+              <a class="nav pull-right" href="/page/<%=(articles.page + 1)%>">Next</a>
+            <% } %>           
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

@@ -42,7 +42,7 @@ List.prototype.getSchema = function() {
                     "description" : "Write Mode",
                     oneOf : [
                             {
-                                "$ref" : "#/definitions/write_mode"
+                                "$ref" : "#/config/definitions/write_mode"
                             }
                             ]
                 }
