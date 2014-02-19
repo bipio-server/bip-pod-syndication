@@ -123,17 +123,17 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
         .pipe(new FeedParser())
         .on('error', function(error) {
           log(error, channel, 'error');
-          console.log('returning error');
           next(error, 'channel', channel);
         })
         .on('meta', function (meta) {
-          next(false, 'channel', channel);
+          //next(false, 'channel', channel);
 
           // auto discover description
           var updateCols = {};
 
           if (meta.title && channel.name === self.description) {
             updateCols.name = meta.title;
+            channel.name = meta.title;
           }
 
           if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
@@ -160,6 +160,8 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
               }
             });
           }
+          
+          next(false, 'channel', channel);          
         });
     } catch (e) {
       next(e, 'channel', channel);

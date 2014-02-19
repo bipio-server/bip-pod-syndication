@@ -58,6 +58,18 @@ Feed.prototype.getSchema = function() {
         description : 'Blog',
         description_long : 'Blogging Format',
         contentType : DEFS.CONTENTTYPE_HTML
+      },
+      remove_by_bip : {
+        description : 'Remove By Bip ID',
+        description_long : 'Removes a feed entity by its originating Bip ID',
+        contentType : DEFS.CONTENTTYPE_JSON,
+        properties : {
+          id : {
+            type : 'string',
+            description : 'Bip ID',
+            required : true
+          }
+        }
       }
     },
     'config' : {
@@ -264,7 +276,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           var createTime = moment(imports.created_time).unix();
 
           if (isNaN(createTime)) {
-            createTime = app.helper.nowUTCSeconds() / 1000;
+            createTime = Math.floor(app.helper.nowUTCSeconds() / 1000);
           }
 
           var parser = new htmlparser.Parser({
@@ -289,7 +301,8 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             summary : imports.summary,
             description : imports.description,
             category : imports.category,
-            entity_created : createTime
+            entity_created : createTime,
+            src_bip_id : sysImports.bip.id
           }
 
           entityStruct = app.helper.pasteurize(entityStruct, true);
@@ -368,7 +381,13 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
           for (i in tokens) {
             var filterVars = tokens[i].split(':');
             if (undefined != filterVars[0] && undefined != filterVars[1]) {
-              filter[filterVars[0]] = filterVars[1];
+              if ('since' === filterVars[0] && !isNaN(Number(filterVars[1]))) {
+                filter['created'] = {
+                  '$gt' : Number(filterVars[1] * 1000)
+                }
+              } else if ('since' !== filterVars[0]) {
+                filter[filterVars[0]] = filterVars[1];
+              }
             }
           }
         }
@@ -471,8 +490,8 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   }
   else if ('blog' === method) {
     var user = req.remoteUser.user,
-      tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
-      page = tokens[2];
+    tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
+    page = tokens[2];
 
     if (tokens[1] === 'page' && page) {
       var indexFile = __dirname + '/blog/default/index.ejs';
@@ -512,9 +531,9 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
                   firstImage = false;
                   var parser = new htmlparser.Parser({
-                    onopentag : function(name, attribs) {                      
-                      if (name === 'img' && !firstImage ) {                      
-                        results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);                        
+                    onopentag : function(name, attribs) {
+                      if (name === 'img' && !firstImage ) {
+                        results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);
                         firstImage = true;
                       }
                     }
@@ -530,15 +549,61 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
           })
       });
-  } else if (tokens[1] === 'rss') {
-    this.rpc('rss', sysImports, options, channel, req, res);
+    } else if (tokens[1] === 'rss') {
+      this.rpc('rss', sysImports, options, channel, req, res);
+    } else {
+      res.send(404);
+    }
+
+  } else if ('remove_by_bip' === method) {
+    if (options.id) {
+      var $resource = this.$resource,
+      dao = $resource.dao,
+      modelName = $resource.getDataSourceName('feed'),
+      entityModelName = $resource.getDataSourceName('feed_entity'),
+      filter = {
+        owner_id : channel.owner_id,
+        channel_id : channel.id
+      };
+
+      dao.findFilter(
+        modelName,
+        filter,
+        function(err, feedMeta) {
+          if (err || (feedMeta && feedMeta.length != 1)) {
+            res.send(500);
+          } else {
+            var filter = {
+              src_bip_id : options.id,
+              feed_id : feedMeta[0].id
+            }
+
+            dao.removeFilter(entityModelName, filter, function(err) {
+              if (err) {
+                res.send(500);
+              } else {
+                // update last build time
+                dao.updateColumn(
+                  modelName,
+                  {
+                    id : feedMeta[0].id
+                  },
+                  {
+                    last_build : app.helper.nowUTCSeconds()
+                  }
+                  );
+                res.send(200);
+              }
+            });
+          }
+        }
+        );
+    } else {
+      res.send(500);
+    }
   } else {
     res.send(404);
   }
-
-} else {
-  res.send(404);
-}
 };
 
 // -----------------------------------------------------------------------------

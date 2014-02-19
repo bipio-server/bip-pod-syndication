@@ -75,13 +75,25 @@ FeedEntity = {
             renderable : true,
             writable : false
         },
-
         
         category : {
             type : Array,
             index : true,
             renderable : true,
             writable : false
+        },
+        
+        src_bip_id : {
+            type : String,
+            renderable : false,
+            writable : false
+        },
+        
+        favorited : {
+          type : Boolean,
+          "default" : false,
+          renderable: true,
+          writable : false
         }
     }
 };
