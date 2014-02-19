@@ -59,7 +59,7 @@ Feed.prototype.getSchema = function() {
         description_long : 'Blogging Format',
         contentType : DEFS.CONTENTTYPE_HTML
       },
-      remove_by_bip : {
+      'remove_by_bip' : {
         description : 'Remove By Bip ID',
         description_long : 'Removes a feed entity by its originating Bip ID',
         contentType : DEFS.CONTENTTYPE_JSON,
@@ -67,6 +67,18 @@ Feed.prototype.getSchema = function() {
           id : {
             type : 'string',
             description : 'Bip ID',
+            required : true
+          }
+        }
+      },
+      'remove_entity' : {
+        description : 'Remove Feed Entity',
+        description_long : 'Removes a feed entity by its GUID',
+        contentType : DEFS.CONTENTTYPE_JSON,
+        properties : {
+          guid : {
+            type : 'string',
+            description : 'Entity ID',
             required : true
           }
         }
@@ -459,11 +471,13 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 feed.item(results.data[i]);
               }
               payload = feed.xml();
+              
             } else if ('json' === method) {
               payload = {
                 meta : struct.meta,
                 entities : results
               }
+
               if (results.data) {
                 for (var i = 0; i < results.data.length; i++) {
                   results.data[i] = {
@@ -476,7 +490,8 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                     'image' : results.data[i].image,
                     'image_dim' : results.data[i].image_dim,
                     'created_time' : results.data[i].entity_created,
-                    '_channel_id' : results._channel_id
+                    'feed_id' : results.data[i].feed_id,
+                    '_channel_id' : results.data[i]._channel_id
                   }
                 }
               }
@@ -555,49 +570,19 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
       res.send(404);
     }
 
+  } else if ('remove_entity' === method) {
+    if (options.guid) {
+      this._removeByFilter(channel, {
+          id : options.guid
+        }, res);
+    } else {
+      res.send(500);
+    }
   } else if ('remove_by_bip' === method) {
     if (options.id) {
-      var $resource = this.$resource,
-      dao = $resource.dao,
-      modelName = $resource.getDataSourceName('feed'),
-      entityModelName = $resource.getDataSourceName('feed_entity'),
-      filter = {
-        owner_id : channel.owner_id,
-        channel_id : channel.id
-      };
-
-      dao.findFilter(
-        modelName,
-        filter,
-        function(err, feedMeta) {
-          if (err || (feedMeta && feedMeta.length != 1)) {
-            res.send(500);
-          } else {
-            var filter = {
-              src_bip_id : options.id,
-              feed_id : feedMeta[0].id
-            }
-
-            dao.removeFilter(entityModelName, filter, function(err) {
-              if (err) {
-                res.send(500);
-              } else {
-                // update last build time
-                dao.updateColumn(
-                  modelName,
-                  {
-                    id : feedMeta[0].id
-                  },
-                  {
-                    last_build : app.helper.nowUTCSeconds()
-                  }
-                  );
-                res.send(200);
-              }
-            });
-          }
-        }
-        );
+      this._removeByFilter(channel, {
+          src_bip_id : options.id
+        }, res);
     } else {
       res.send(500);
     }
@@ -605,6 +590,47 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     res.send(404);
   }
 };
+
+Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
+  var $resource = this.$resource,
+    dao = $resource.dao,
+    modelName = $resource.getDataSourceName('feed'),
+    entityModelName = $resource.getDataSourceName('feed_entity'),
+    filter = {
+      owner_id : channel.owner_id,
+      channel_id : channel.id
+    };
+
+  dao.findFilter(
+    modelName,
+    filter,
+    function(err, feedMeta) {
+      if (err || (feedMeta && feedMeta.length != 1)) {
+        res.send(500);
+      } else {
+        dao.removeFilter(entityModelName, entityFilter, function(err) {
+          if (err) {
+            res.send(500);
+          } else {
+            entityFilter.feed_id = feedMeta[0].id;
+            
+            // update last build time
+            dao.updateColumn(
+              modelName,
+              {
+                id : feedMeta[0].id
+              },
+              {
+                last_build : app.helper.nowUTCSeconds()
+              }
+              );
+            res.send(200);
+          }
+        });
+      }
+    }
+    );
+}
 
 // -----------------------------------------------------------------------------
 module.exports = Feed;

@@ -1,0 +1,81 @@
+{
+  corpus : [
+  {
+    "from_channel": "syndication.subscribe",
+    "to_channel": "syndication.feed",
+    "transform": {
+      "title": "[%source#title%]",
+      "description": "[%source#description%]",
+      "summary": "[%source#summary%]",
+      "url": "[%source#link%]",
+      "created_time": "[%source#pubdate%]",
+      "author": "[%source#author%]",
+      "image": "[%source#image%]",
+      "icon": "[%source#icon%]",
+      "category": ""
+    }
+  },
+  {
+    "from_channel": "bip.smtp",
+    "to_channel": "syndication.feed",
+    "transform": {
+      "category": "",
+      "icon": "",
+      "image": "",
+      "author": "[%source#reply_to%]",
+      "created_time": "[%_client#date%]",
+      "url": "",
+      "summary": "[%source#body_text%]",
+      "description": "[%source#body_text%]",
+      "title": "[%source#subject%]"
+    }
+  },
+  {
+    "from_channel": "bip.http",
+    "to_channel": "syndication.feed",
+    "transform": {
+      "category": "",
+      "icon": "",
+      "image": "",
+      "author": "[%_client#repr%]",
+      "created_time": "[%_client#date%]",
+      "url": "[%_client#host%]",
+      "summary": "",
+      "description": "[%source#body%]",
+      "title": "[%source#title%]"
+    }
+  },
+  {    
+    "from_channel": "soundcloud.get_favorites",
+    "to_channel": "syndication.feed",
+    "transform": {
+      "category": "[%source#genre%]",
+      "icon": "",
+      "image": "[%source#artwork_url%]",
+      "author": "[%source#artist%]",
+      "created_time": "",
+      "url": "[%source#permalink_url%]",
+      "summary": "[%source#description%]",
+      "description": "[%source#description%]",
+      "title": "[%source#title%]"
+    }
+  },
+  {
+    "from_channel": "instagram.my_media",
+    "to_channel": "syndication.feed",
+    "transform": {
+      "category": "",
+      "icon": "",
+      "image": "[%source#media_url%]",
+      "author": "",
+      "created_time": "",
+      "url": "[%source#media_url%]",
+      "summary": "[%source#file_name%]",
+      "title": "[%source#caption%]"
+    }
+  }
+
+
+
+  ]
+}
