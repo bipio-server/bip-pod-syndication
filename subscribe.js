@@ -129,11 +129,12 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
           //next(false, 'channel', channel);
 
           // auto discover description
-          var updateCols = {};
+          var updateCols = {}, newName;
 
           if (meta.title && channel.name === self.description) {
-            updateCols.name = meta.title;
-            channel.name = meta.title;
+            newName = meta.title.substring(0, 64);
+            updateCols.name = newName;
+            channel.name = newName;
           }
 
           if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
@@ -166,6 +167,31 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
     } catch (e) {
       next(e, 'channel', channel);
     }
+}
+
+
+/**
+ * deletes subscription tracking
+ */
+Subscribe.prototype.teardown = function(channel, accountInfo, next) {
+  var $resource = this.$resource,
+  self = this,
+  dao = $resource.dao,
+  log = $resource.log,
+  modelName = this.$resource.getDataSourceName('track_subscribe');
+
+  dao.removeFilter(
+    modelName,
+    {
+      owner_id : channel.owner_id,
+      channel_id : channel.id
+    },
+    function(err) {
+      if (err) {
+        log(err, channel, 'error');      
+      }
+      next(err, modelName, null);
+    });
 }
 
 

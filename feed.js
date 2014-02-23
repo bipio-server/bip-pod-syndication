@@ -638,8 +638,8 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
               {
                 last_build : app.helper.nowUTCSeconds()
               }
-              );
-            res.send(200);
+              );                
+            res.send({ message : 'OK' } , 200);
           }
         });
       }
