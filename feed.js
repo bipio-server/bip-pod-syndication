@@ -27,7 +27,8 @@ path = require('path'),
 ejs = require('ejs'),
 request = require('request'),
 imagemagick = require('imagemagick');
-htmlparser = require('htmlparser2');
+htmlparser = require('htmlparser2'),
+cron = require('cron');
 
 function Feed(podConfig) {
   this.name = 'feed';
@@ -97,7 +98,13 @@ Feed.prototype.getSchema = function() {
         dribble_handle : {
           type : 'string',
           description : 'Dribble Username (Blog Renderer)'
-        }
+        },
+        /* stub
+        purge_after : {
+          type : 'string',
+          description : 'Purge after (n) days,weeks,months',
+          'default' : '30d'
+        }*/
       }
     },
     "imports": {
@@ -173,6 +180,9 @@ Feed.prototype.setup = function(channel, accountInfo, next) {
       next(err, 'channel', channel);
 
     }, accountInfo);
+
+    self.pod.getCDNDir(channel, 'feed');
+    
   })(channel, accountInfo, next);
 }
 
@@ -210,7 +220,7 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
               } else {
                 dao.removeFilter(feedModelName, {
                   id : feed.id
-                }, next );
+                }, next );                                
               }
             }
             );
@@ -219,6 +229,8 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
         }
       }
     });
+    
+  self.pod.rmCDNDir(channel, 'feed');
 }
 
 /**
@@ -226,8 +238,10 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
  */
 Feed.prototype._pushImageCDN = function(channel, srcUrl, next) {
   this.pod.getCDNDir(channel, 'feed', function(err, path) {
-    var dstFile = path + app.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
-    app.cdn.httpFileSnarf(srcUrl, dstFile, next);
+    if (!err) {
+      var dstFile = path + app.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
+      app.cdn.httpFileSnarf(srcUrl, dstFile, next);
+    }
   });
 }
 
@@ -491,7 +505,8 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                     'image_dim' : results.data[i].image_dim,
                     'created_time' : results.data[i].entity_created,
                     'feed_id' : results.data[i].feed_id,
-                    '_channel_id' : results.data[i]._channel_id
+                    '_channel_id' : results.data[i]._channel_id,
+                    'src_bip_id' : results.data[i].src_bip_id
                   }
                 }
               }
