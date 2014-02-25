@@ -114,11 +114,11 @@ Feed.prototype.getSchema = function() {
           description : 'Title'
         },
         'description' : {
-          type : 'string',
+          type : 'text',
           description : 'Description'
         },
         'summary' : {
-          type : 'string',
+          type : 'text',
           description : 'Article Summary'
         },
         'url' : {
