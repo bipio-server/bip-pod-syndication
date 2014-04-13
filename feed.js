@@ -27,10 +27,10 @@ path = require('path'),
 ejs = require('ejs'),
 request = require('request'),
 imagemagick = require('imagemagick');
-htmlparser = require('htmlparser2'),
-cron = require('cron');
+htmlparser = require('htmlparser2');
 
-function Feed(podConfig) {
+
+function Feed(podConfig, pod) {
   this.name = 'feed';
   this.description = 'Create A Feed',
   this.description_long = 'Creates an syndication from content you receive from Bips',
@@ -38,9 +38,30 @@ function Feed(podConfig) {
   this.singleton = false; // only 1 instance per account (can auto install)
   this.auto = false; // no config, not a singleton but can auto-install anyhow
   this.podConfig = podConfig; // general system level config for this pod (transports etc)
+
+  // daily cron expire
+  console.log(app.isMaster);
+  if (app.isMaster) {
+    pod.registerCron(this.name, '0 0 * * * *', this.expireFeeds);
+  }
 }
 
 Feed.prototype = {};
+
+Feed.prototype.expireFeeds = function() {
+  // get all feeds
+  this.$resource.dao.findFilter(
+    'channel',
+    {
+      action : 'syndication.feed'
+    },
+    function(err, result) {
+      if (!err) {
+        console.log(result);
+      }
+    }
+  );
+}
 
 Feed.prototype.getSchema = function() {
   return {
@@ -99,12 +120,23 @@ Feed.prototype.getSchema = function() {
           type : 'string',
           description : 'Dribble Username (Blog Renderer)'
         },
-        /* stub
         purge_after : {
           type : 'string',
           description : 'Purge after (n) days,weeks,months',
-          'default' : '30d'
-        }*/
+          oneOf : [
+            {
+              "$ref" : "#/config/definitions/purge_after"
+            }
+          ]
+        }
+      },
+      definitions : {
+        purge_after : {
+          "description" : "Purge Content",
+          "enum" : [ "never" , "30d" ],
+          "enum_label" : [ "Never" , "After 30 Days" ],
+          'default' : 'never'
+        }
       }
     },
     "imports": {
@@ -182,7 +214,7 @@ Feed.prototype.setup = function(channel, accountInfo, next) {
     }, accountInfo);
 
     self.pod.getCDNDir(channel, 'feed');
-    
+
   })(channel, accountInfo, next);
 }
 
@@ -220,7 +252,7 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
               } else {
                 dao.removeFilter(feedModelName, {
                   id : feed.id
-                }, next );                                
+                }, next );
               }
             }
             );
@@ -229,7 +261,7 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
         }
       }
     });
-    
+
   self.pod.rmCDNDir(channel, 'feed');
 }
 
@@ -485,7 +517,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 feed.item(results.data[i]);
               }
               payload = feed.xml();
-              
+
             } else if ('json' === method) {
               payload = {
                 meta : struct.meta,
@@ -503,6 +535,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                     'icon' : results.data[i].icon,
                     'image' : results.data[i].image,
                     'image_dim' : results.data[i].image_dim,
+                    'author' : results.data[i].author,
                     'created_time' : results.data[i].entity_created,
                     'feed_id' : results.data[i].feed_id,
                     '_channel_id' : results.data[i]._channel_id,
@@ -513,7 +546,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
 
             res.contentType(self.getSchema().renderers[method].contentType);
-            res.send(payload);
+            res.send($resource.htmlNormalize(payload));
           }
         });
     })(method, channel, req, res);
@@ -542,7 +575,8 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
           twitterImage : channel.config.twitter_handle ? '<a href="https://twitter.com/' + channel.config.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           githubImage : channel.config.github_handle ? '<a href="https://github.com/' + channel.config.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          dribbleImage : channel.config.dribble_handle ? '<a href="http://dribble.com/' + channel.config.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : ''
+          dribbleImage : channel.config.dribble_handle ? '<a href="http://dribble.com/' + channel.config.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          moment : moment
         };
 
         var firstImage = false;
@@ -557,20 +591,22 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
               res.send(500);
             } else {
               tplVars.articles = results;
-              for (var i = 0; i < results.data.length; i++) {
-                if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
-                  firstImage = false;
-                  var parser = new htmlparser.Parser({
-                    onopentag : function(name, attribs) {
-                      if (name === 'img' && !firstImage ) {
-                        results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);
-                        firstImage = true;
+              if (results && results.data) {
+                for (var i = 0; i < results.data.length; i++) {
+                  if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
+                    firstImage = false;
+                    var parser = new htmlparser.Parser({
+                      onopentag : function(name, attribs) {
+                        if (name === 'img' && !firstImage ) {
+                          results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);
+                          firstImage = true;
+                        }
                       }
-                    }
-                  });
+                    });
 
-                  parser.write(results.data[i].summary);
-                  parser.end();
+                    parser.write(results.data[i].summary);
+                    parser.end();
+                  }
                 }
               }
               res.writeHead(200);
@@ -628,7 +664,7 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
             res.send(500);
           } else {
             entityFilter.feed_id = feedMeta[0].id;
-            
+
             // update last build time
             dao.updateColumn(
               modelName,
@@ -638,7 +674,7 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
               {
                 last_build : app.helper.nowUTCSeconds()
               }
-              );                
+              );
             res.send({ message : 'OK' } , 200);
           }
         });

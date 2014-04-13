@@ -35,6 +35,12 @@ SubscriptionTracking.entitySchema = {
         writable : false
     },
 
+    bip_id : {
+        type : String,
+        renderable : true,
+        writable : false
+    },
+
     // remote guid or url
     guid : {
         type : String,

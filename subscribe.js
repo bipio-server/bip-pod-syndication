@@ -206,7 +206,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta;
 
-  var readable = request(channel.config.url)
+  var readable = request(app.helper.naturalize(channel.config.url))
     .pipe(new FeedParser())
     .on('error', function(error) {
       log(error, channel);
@@ -237,7 +237,8 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
             {
               owner_id : channel.owner_id,
               channel_id : channel.id,
-              guid : chunk.guid
+              guid : chunk.guid,
+              bip_id : sysImports.bip.id
             },
             function(err, result) {
               var now = moment().unix(),
@@ -252,6 +253,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
                     owner_id : channel.owner_id,
                     channel_id : channel.id,
                     guid : chunk.guid,
+                    bip_id : sysImports.bip.id,
                     last_update : pubdate
                   });
 

@@ -4,14 +4,14 @@ FeedEntity = {
         id: {
             type: String,
             index : true,
-            renderable: false,
+            renderable: true,
             writable: false
         },
 
         feed_id : {
             type: String,
             index : true,
-            renderable: false,
+            renderable: true,
             writable: false
         },
                

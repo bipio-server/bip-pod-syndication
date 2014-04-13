@@ -19,6 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 var Pod = require('bip-pod'),
+    cron = require('cron'),
     Syndication = new Pod({
         name : 'syndication',
         description : 'Syndication',
@@ -30,6 +31,17 @@ var Pod = require('bip-pod'),
             require('./models/track_subscribe'),
         ]
     });
+
+var crons = {
+  
+};
+
+Syndication.registerCron = function(id, period, cb) {
+  if (!crons[id]) {
+    console.log('registering cron');
+    crons[id] = new cron.CronJob(period, cb);
+  }
+}
 
 Syndication.add(require('./list.js'));
 Syndication.add(require('./feed.js'));
