@@ -21,10 +21,11 @@
  */
 
 var FeedParser = require('feedparser'),
-  request = require('request'),
-  moment = require('moment');
+request = require('request'),
+moment = require('moment');
 
-function Subscribe(podConfig) {
+function Subscribe(podConfig, pod) {
+  var self = this;
   this.name = 'subscribe';
   this.description = 'Subscribe to a Feed',
   this.description_long = 'Subscribes to an RSS/ATOM/RDF Feed',
@@ -32,9 +33,39 @@ function Subscribe(podConfig) {
   this.singleton = false; // only 1 instance per account (can auto install)
   this.auto = false; // no config, not a singleton but can auto-install anyhow
   this.podConfig = podConfig; // general system level config for this pod (transports etc)
+
+  pod.registerCron(this.name, '0 0 * * * *', function() {
+    self.expireTracker.apply(self);
+  });
 }
 
 Subscribe.prototype = {};
+
+/**
+ * Dumps any syndication GUID's tracked over 30 days ago
+ */
+Subscribe.prototype.expireTracker = function() {
+  var self = this,
+  modelName = self.$resource.getDataSourceName('track_subscribe'),
+  maxTime = (new Date()).getTime() - (30 * 24 * 60 * 60 * 1000);
+
+  self.$resource.dao.removeFilter(
+    modelName,
+    {
+      'created' : {
+        '$lt' : maxTime
+      }
+    },
+    function(err) {
+      if (err) {
+        self.log(err, {
+          owner_id : 'SYSTEM',
+          action : self._name
+        }, 'error');
+      }
+    }
+    );
+}
 
 Subscribe.prototype.getSchema = function() {
   return {
@@ -51,10 +82,6 @@ Subscribe.prototype.getSchema = function() {
           optional: true,
           description : 'Icon URL'
         }
-      }
-    },
-    "imports": {
-      properties : {
       }
     },
     "exports": {
@@ -106,67 +133,73 @@ Subscribe.prototype.getSchema = function() {
 
 Subscribe.prototype.setChannelIcon = function(channel, cdnURI) {
   var newConfig = app._.clone(channel.config),
-    dao = this.$resource.dao;
+  dao = this.$resource.dao;
 
   channel.config.icon = newConfig.icon = cdnURI;
-  dao.updateColumn('channel', { id : channel.id }, { config : newConfig });
+  dao.updateColumn('channel', {
+    id : channel.id
+  }, {
+    config : newConfig
+  });
 }
 
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
-    var $resource = this.$resource,
-    self = this,
-    dao = $resource.dao,
-    log = $resource.log;
+  var $resource = this.$resource,
+  self = this,
+  dao = $resource.dao,
+  log = $resource.log;
 
-    try {
-      request(channel.config.url)
-        .pipe(new FeedParser())
-        .on('error', function(error) {
-          log(error, channel, 'error');
-          next(error, 'channel', channel);
-        })
-        .on('meta', function (meta) {
-          //next(false, 'channel', channel);
+  try {
+    request(channel.config.url)
+    .pipe(new FeedParser())
+    .on('error', function(error) {
+      log(error, channel, 'error');
+      next(error, 'channel', channel);
+    })
+    .on('meta', function (meta) {
+      //next(false, 'channel', channel);
 
-          // auto discover description
-          var updateCols = {}, newName;
+      // auto discover description
+      var updateCols = {}, newName;
 
-          if (meta.title && channel.name === self.description) {
-            newName = meta.title.substring(0, 64);
-            updateCols.name = newName;
-            channel.name = newName;
-          }
+      if (meta.title && channel.name === self.description) {
+        newName = meta.title.substring(0, 64);
+        updateCols.name = newName;
+        channel.name = newName;
+      }
 
-          if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
-            updateCols.note = meta.description;
-            channel.note = updateCols.note;
-          }
+      if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
+        updateCols.note = meta.description;
+        channel.note = updateCols.note;
+      }
 
-          if (Object.keys(updateCols).length) {
-            dao.updateColumn('channel', { id : channel.id }, updateCols);
-          }
+      if (Object.keys(updateCols).length) {
+        dao.updateColumn('channel', {
+          id : channel.id
+        }, updateCols);
+      }
 
-          if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
-            app.cdn.getFavicon(channel.config.url, function(err, cdnURI) {
-              if (!err) {
-                if (cdnURI) {
+      if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
+        app.cdn.getFavicon(channel.config.url, function(err, cdnURI) {
+          if (!err) {
+            if (cdnURI) {
+              self.setChannelIcon(channel, cdnURI);
+            } else {
+              app.cdn.getFavicon(meta.link, function(err, cdnURI) {
+                if (!err && cdnURI) {
                   self.setChannelIcon(channel, cdnURI);
-                } else {
-                  app.cdn.getFavicon(meta.link, function(err, cdnURI) {
-                    if (!err && cdnURI) {
-                      self.setChannelIcon(channel, cdnURI);
-                    }
-                  });
                 }
-              }
-            });
+              });
+            }
           }
-          
-          next(false, 'channel', channel);          
         });
-    } catch (e) {
-      next(e, 'channel', channel);
-    }
+      }
+
+      next(false, 'channel', channel);
+    });
+  } catch (e) {
+    next(e, 'channel', channel);
+  }
 }
 
 
@@ -188,7 +221,7 @@ Subscribe.prototype.teardown = function(channel, accountInfo, next) {
     },
     function(err) {
       if (err) {
-        log(err, channel, 'error');      
+        log(err, channel, 'error');
       }
       next(err, modelName, null);
     });
@@ -207,75 +240,79 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   meta;
 
   var readable = request(app.helper.naturalize(channel.config.url))
-    .pipe(new FeedParser())
-    .on('error', function(error) {
-      log(error, channel);
-      next(true);
-    })
-    .on('readable', function() {
-      var chunk;
-      while (null !== (chunk = readable.read())) {
-        //console.log(chunk);
-        var exports = {
-          guid : chunk.guid,
-          title : chunk.title,
-          description : chunk.description,
-          summary : chunk.summary,
-          link : chunk.link,
-          date : chunk.date,
-          pubdate : chunk.pubdate,
-          author : chunk.author,
-          image : chunk.image.url || '',
-          icon : channel.config.icon
-          // categories : chunk.categories
-        };
+  .pipe(new FeedParser())
+  .on('error', function(error) {
+    log(error, channel);
+    next(true);
+  })
+  .on('readable', function() {
+    var chunk;
+    while (null !== (chunk = readable.read())) {
+      //console.log(chunk);
+      var exports = {
+        guid : chunk.guid,
+        title : chunk.title,
+        description : chunk.description,
+        summary : chunk.summary,
+        link : chunk.link,
+        date : chunk.date,
+        pubdate : chunk.pubdate,
+        author : chunk.author,
+        image : chunk.image.url || '',
+        icon : channel.config.icon
+      // categories : chunk.categories
+      };
 
-        (function(channel, chunk, next) {
-          // push to tracking
-          dao.find(
-            modelName,
-            {
-              owner_id : channel.owner_id,
-              channel_id : channel.id,
-              guid : chunk.guid,
-              bip_id : sysImports.bip.id
-            },
-            function(err, result) {
-              var now = moment().unix(),
-                pubdate;
+      (function(channel, chunk, next) {
+        // push to tracking
+        dao.find(
+          modelName,
+          {
+            owner_id : channel.owner_id,
+            channel_id : channel.id,
+            guid : chunk.guid,
+            bip_id : sysImports.bip.id
+          },
+          function(err, result) {
+            var now = moment().unix(),
+            pubdate;
 
-              if (err) {
-                log(err, channel, 'error');
+            if (err) {
+              log(err, channel, 'error');
+            } else {
+              pubdate = moment(chunk.pubdate).unix();
+              if (!result) {
+                var model = dao.modelFactory(modelName, {
+                  owner_id : channel.owner_id,
+                  channel_id : channel.id,
+                  guid : chunk.guid,
+                  bip_id : sysImports.bip.id,
+                  last_update : pubdate
+                });
+
+                dao.create(model);
+
+                next(false, exports);
               } else {
-                pubdate = moment(chunk.pubdate).unix();
-                if (!result) {
-                  var model = dao.modelFactory(modelName, {
-                    owner_id : channel.owner_id,
-                    channel_id : channel.id,
-                    guid : chunk.guid,
-                    bip_id : sysImports.bip.id,
+                if (pubdate > result.last_update) {
+                  dao.updateColumn(modelName, {
+                    id : result.id
+                  },  {
                     last_update : pubdate
                   });
-
-                  dao.create(model);
-
                   next(false, exports);
-                } else {
-                  if (pubdate > result.last_update) {
-                    dao.updateColumn(modelName, { id : result.id },  { last_update : pubdate });
-                    next(false, exports);
-                  }
                 }
               }
             }
+          }
           );
-        })(channel, chunk, next);
-      }
-    })
-    .on('end', function() {
-      log(channel.config.url + ' retr finished', channel);
-    });
-  }
+      })(channel, chunk, next);
+    }
+  })
+  .on('end', function() {
+    log(channel.config.url + ' retr finished', channel);
+  });
+}
 
 // -----------------------------------------------------------------------------
 module.exports = Subscribe;

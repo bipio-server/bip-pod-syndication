@@ -4,7 +4,7 @@
  * ---------------------------------------------------------------
  *
  * @author Michael Pearson <michael@cloudspark.com.au>
- * Copyright (c) 2010-2013 CloudSpark pty ltd http://www.cloudspark.com.au
+ * Copyright (c) 2010-2014 CloudSpark pty ltd http://www.cloudspark.com.au
  *
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -31,6 +31,8 @@ htmlparser = require('htmlparser2');
 
 
 function Feed(podConfig, pod) {
+  var self = this;
+  
   this.name = 'feed';
   this.description = 'Create A Feed',
   this.description_long = 'Creates an syndication from content you receive from Bips',
@@ -39,28 +41,79 @@ function Feed(podConfig, pod) {
   this.auto = false; // no config, not a singleton but can auto-install anyhow
   this.podConfig = podConfig; // general system level config for this pod (transports etc)
 
-  // daily cron expire
-  console.log(app.isMaster);
-  if (app.isMaster) {
-    pod.registerCron(this.name, '0 0 * * * *', this.expireFeeds);
-  }
+  pod.registerCron(this.name, '0 0 * * * *', function() {
+    self.expireFeeds.apply(self);
+  });
 }
 
 Feed.prototype = {};
 
 Feed.prototype.expireFeeds = function() {
+  var self = this;
+
   // get all feeds
-  this.$resource.dao.findFilter(
+  self.$resource.dao.findFilter(
     'channel',
     {
       action : 'syndication.feed'
     },
-    function(err, result) {
+    function(err, results) {
+      var r;
       if (!err) {
-        console.log(result);
+        for (var i = 0; i < results.length; i++) {
+          r = results[i],
+          feedEntityModelName = self.$resource.getDataSourceName('feed_entity'),
+          modelName = self.$resource.getDataSourceName('feed');
+
+          // @todo configurable purge times
+          if (r.config && '30d' === r.config.purge_after) {
+            // purge channel data
+            (function(channel) {
+              // get marked feeds
+              self.$resource.dao.findFilter(
+                modelName,
+                {
+                  channel_id : r.id,
+                  owner_id : r.owner_id
+                },
+                function(err, results) {                  
+                  var filter,
+                  maxTime = (new Date()).getTime() - (30 * 24 * 60 * 60 * 1000);
+                  if (err) {
+                    self.log(err, channel, 'error');
+                  } else {
+                    if (results) {
+                      for (var i = 0; i < results.length; i++) {
+                        filter = {
+                          'feed_id' : results[i].id,
+                          'created' : {
+                            '$lt' : maxTime
+                          }
+                        };
+                        
+                        self.$resource.dao.removeFilter(feedEntityModelName, filter, function(err) {
+                          if (err) {
+                            self.log(err, channel, 'error');                        
+                          }                      
+                        });
+                      }
+                      
+                      self.pod.expireCDNDir(channel, self._name, channel.config.purge_after);
+                    }
+                  }
+                }
+                );
+            })(r);
+          }
+        }
+      } else {
+        self.log(err, {
+          owner_id : 'SYSTEM',
+          action : self._name
+        }, 'error');
       }
     }
-  );
+    );
 }
 
 Feed.prototype.getSchema = function() {
@@ -124,9 +177,9 @@ Feed.prototype.getSchema = function() {
           type : 'string',
           description : 'Purge after (n) days,weeks,months',
           oneOf : [
-            {
-              "$ref" : "#/config/definitions/purge_after"
-            }
+          {
+            "$ref" : "#/config/definitions/purge_after"
+          }
           ]
         }
       },
@@ -624,16 +677,16 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   } else if ('remove_entity' === method) {
     if (options.guid) {
       this._removeByFilter(channel, {
-          id : options.guid
-        }, res);
+        id : options.guid
+      }, res);
     } else {
       res.send(500);
     }
   } else if ('remove_by_bip' === method) {
     if (options.id) {
       this._removeByFilter(channel, {
-          src_bip_id : options.id
-        }, res);
+        src_bip_id : options.id
+      }, res);
     } else {
       res.send(500);
     }
@@ -644,13 +697,13 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
 
 Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
   var $resource = this.$resource,
-    dao = $resource.dao,
-    modelName = $resource.getDataSourceName('feed'),
-    entityModelName = $resource.getDataSourceName('feed_entity'),
-    filter = {
-      owner_id : channel.owner_id,
-      channel_id : channel.id
-    };
+  dao = $resource.dao,
+  modelName = $resource.getDataSourceName('feed'),
+  entityModelName = $resource.getDataSourceName('feed_entity'),
+  filter = {
+    owner_id : channel.owner_id,
+    channel_id : channel.id
+  };
 
   dao.findFilter(
     modelName,
@@ -675,7 +728,9 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
                 last_build : app.helper.nowUTCSeconds()
               }
               );
-            res.send({ message : 'OK' } , 200);
+            res.send({
+              message : 'OK'
+            } , 200);
           }
         });
       }
