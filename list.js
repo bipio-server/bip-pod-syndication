@@ -23,8 +23,8 @@ var fs = require('fs');
 
 function List(podConfig) {
     this.name = 'list';
-    this.description = 'Store a list of items',
-    this.description_long = 'Content that this channel receives will be stored "as-is" into a list',
+    this.title = 'Store a list of items',
+    this.description = 'Content that this channel receives will be stored "as-is" into a list',
     this.trigger = false; // this action can trigger
     this.singleton = false; // only 1 instance per account (can auto install)
     this.auto = false; // no config, not a singleton but can auto-install anyhow
@@ -69,7 +69,7 @@ List.prototype.getSchema = function() {
                 contentType : DEFS.CONTENTTYPE_TSV
             }
         },
-        
+
         'defaults' : {
             'icon_url' : CFG_CDN + '/channels/rss.png'
         },
@@ -139,11 +139,11 @@ List.prototype.teardown = function(channel, accountInfo, next) {
     self = this,
     dao = $resource.dao,
     log = $resource.log;
-    
+
   // drop list file
   self._getListFile(channel, function(err, fileName ) {
     if (!err) {
-      fs.unlink(fileName);      
+      fs.unlink(fileName);
       dao.removeFilter(
         $resource.getDataSourceName('track_list'),
         {
@@ -155,7 +155,7 @@ List.prototype.teardown = function(channel, accountInfo, next) {
     } else {
       next(err, 'channel', self);
     }
-  });    
+  });
 }
 
 
@@ -203,7 +203,7 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             });
 
             fStream.on('end', function() {
-                res.send();                
+                res.send();
             });
         });
     } else {

@@ -27,8 +27,8 @@ moment = require('moment');
 function Subscribe(podConfig, pod) {
   var self = this;
   this.name = 'subscribe';
-  this.description = 'Subscribe to a Feed',
-  this.description_long = 'Subscribes to an RSS/ATOM/RDF Feed',
+  this.title = 'Subscribe to a Feed',
+  this.description = 'Subscribes to an RSS/ATOM/RDF Feed',
   this.trigger = true; // this action can trigger
   this.singleton = false; // only 1 instance per account (can auto install)
   this.auto = false; // no config, not a singleton but can auto-install anyhow

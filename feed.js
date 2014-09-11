@@ -32,10 +32,10 @@ htmlparser = require('htmlparser2');
 
 function Feed(podConfig, pod) {
   var self = this;
-  
+
   this.name = 'feed';
-  this.description = 'Create A Feed',
-  this.description_long = 'Creates an syndication from content you receive from Bips',
+  this.title = 'Create A Feed',
+  this.description = 'Creates an syndication from content you receive from Bips',
   this.trigger = false; // this action can trigger
   this.singleton = false; // only 1 instance per account (can auto install)
   this.auto = false; // no config, not a singleton but can auto-install anyhow
@@ -76,7 +76,7 @@ Feed.prototype.expireFeeds = function() {
                   channel_id : r.id,
                   owner_id : r.owner_id
                 },
-                function(err, results) {                  
+                function(err, results) {
                   var filter,
                   maxTime = (new Date()).getTime() - (30 * 24 * 60 * 60 * 1000);
                   if (err) {
@@ -90,14 +90,14 @@ Feed.prototype.expireFeeds = function() {
                             '$lt' : maxTime
                           }
                         };
-                        
+
                         self.$resource.dao.removeFilter(feedEntityModelName, filter, function(err) {
                           if (err) {
-                            self.log(err, channel, 'error');                        
-                          }                      
+                            self.log(err, channel, 'error');
+                          }
                         });
                       }
-                      
+
                       self.pod.expireCDNDir(channel, self._name, channel.config.purge_after);
                     }
                   }
