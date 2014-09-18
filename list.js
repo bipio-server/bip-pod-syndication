@@ -19,12 +19,13 @@
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
-var fs = require('fs');
+var fs = require('fs'),
+    Stream = require('stream');
 
 function List(podConfig) {
     this.name = 'list';
     this.title = 'Store a list of items',
-    this.description = 'Content that this channel receives will be stored "as-is" into a list',
+    this.description = 'Stores content for adjacent channels',
     this.trigger = false; // this action can trigger
     this.singleton = false; // only 1 instance per account (can auto install)
     this.auto = false; // no config, not a singleton but can auto-install anyhow
@@ -35,84 +36,85 @@ List.prototype = {};
 
 List.prototype.getSchema = function() {
     return {
-        'config' : {
-            properties : {
-                "write_mode" : {
-                    type : "string",
-                    "description" : "Write Mode",
-                    oneOf : [
-                            {
-                                "$ref" : "#/config/definitions/write_mode"
-                            }
-                            ]
+        'config': {
+            properties: {
+                "write_mode": {
+                    type: "string",
+                    "description": "Write Mode",
+                    oneOf: [{
+                        "$ref": "#/config/definitions/write_mode"
+                    }]
+                },
+                'header': {
+                    type: "string",
+                    description: "File Header"
                 }
             },
-            "definitions" : {
-                "write_mode" : {
-                    "description" : "List Write Mode",
-                    "enum" : [ "append" , "replace" ],
-                    "enum_label" : ["Append Entries", "Replace Entries"],
-                    "default" : "append"
+            "definitions": {
+                "write_mode": {
+                    "description": "List Write Mode",
+                    "enum": ["append", "replace"],
+                    "enum_label": ["Append Entries", "Replace Entries"],
+                    "default": "append"
                 }
             }
         },
-        'renderers' : {
-            'csv' : {
-                description : 'CSV',
-                description_long : 'Serves List Entries as Comma Seperated Values (1 line per entry)',
-                contentType : DEFS.CONTENTTYPE_CSV
+        'renderers': {
+            'get': {
+                description: 'Returns list Content',
+                contentType: DEFS.CONTENTTYPE_TEXT
 
-            },
-            'tsv' : {
-                description : 'TSV',
-                description_long : 'Serves List Entries as Tab Seperated Values (1 line per entry)',
-                contentType : DEFS.CONTENTTYPE_TSV
             }
         },
 
-        'defaults' : {
-            'icon_url' : CFG_CDN + '/channels/rss.png'
-        },
-        'exports' : {
-            properties : {
-                'last_modified' : {
-                    type : String,
-                    description : 'Last modified timestamp (UTC)'
+        'exports': {
+            properties: {
+                'line_item': {
+                    type: "string",
+                    description: "Line Item"
                 }
             }
         },
 
         // No import, consumes and stores any adjacent export
-        imports: {}
+        imports: {
+            properties: {
+                'line_item': {
+                    type: "string",
+                    description: "Line Item"
+                }
+            },
+            "required" : [ "line_item" ]
+        }
     }
 }
 
 List.prototype._getListFile = function(channel, next) {
     var dataDir = this.pod.getDataDir(channel, 'list');
     app.helper.mkdir_p(dataDir, 0777, function(err) {
-       next(err, dataDir + channel.id + ".json") ;
+        next(err, dataDir + channel.id + ".txt");
     });
 }
 
 List.prototype.setup = function(channel, accountInfo, next) {
-     var $resource = this.$resource,
+    var $resource = this.$resource,
         self = this,
         dao = $resource.dao,
         log = $resource.log,
         modelName = this.$resource.getDataSourceName('track_list');
 
     (function(channel, accountInfo, next) {
-        self._getListFile(channel, function(err, fileName ) {
+        self._getListFile(channel, function(err, fileName) {
             if (err) {
                 log(err, channel, 'error');
                 next(err, 'channel', channel);
 
             } else {
                 var listStruct = {
-                    owner_id : channel.owner_id,
-                    channel_id : channel.id,
-                    last_update : app.helper.nowUTCSeconds(),
-                    last_build : app.helper.nowUTCSeconds()
+                    owner_id: channel.owner_id,
+                    channel_id: channel.id,
+                    last_update: app.helper.nowUTCSeconds(),
+                    last_build: app.helper.nowUTCSeconds()
                 }
 
                 model = dao.modelFactory(modelName, listStruct, accountInfo);
@@ -135,27 +137,26 @@ List.prototype.setup = function(channel, accountInfo, next) {
 }
 
 List.prototype.teardown = function(channel, accountInfo, next) {
-  var $resource = this.$resource,
-    self = this,
-    dao = $resource.dao,
-    log = $resource.log;
+    var $resource = this.$resource,
+        self = this,
+        dao = $resource.dao,
+        log = $resource.log;
 
-  // drop list file
-  self._getListFile(channel, function(err, fileName ) {
-    if (!err) {
-      fs.unlink(fileName);
-      dao.removeFilter(
-        $resource.getDataSourceName('track_list'),
-        {
-          owner_id : channel.owner_id,
-          channel_id : channel.id
-        },
-        next
-      );
-    } else {
-      next(err, 'channel', self);
-    }
-  });
+    // drop list file
+    self._getListFile(channel, function(err, fileName) {
+        if (!err) {
+            fs.unlink(fileName);
+            dao.removeFilter(
+                $resource.getDataSourceName('track_list'), {
+                    owner_id: channel.owner_id,
+                    channel_id: channel.id
+                },
+                next
+            );
+        } else {
+            next(err, 'channel', self);
+        }
+    });
 }
 
 
@@ -163,48 +164,32 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     var $resource = this.$resource,
         self = this,
         dao = $resource.dao,
-        log = $resource.log;
+        log = $resource.log,
+        modelName = $resource.getDataSourceName('track_list');
 
-    if ('csv' === method || 'tsv' === method) {
+    if ('get' === method) {
         this._getListFile(channel, function(err, fileName) {
-            var ct;
+            res.contentType(self.getSchema().renderers.get.contentType);
 
-            if ('csv' === method) {
-                ct = DEFS.CONTENTTYPE_CSV
-            } else if ('tsv' === method) {
-                ct = DEFS.CONTENTTYPE_TSV
+            if (channel.config.header) {
+                var stream = new Stream();
+                stream.on('data', function(data) {
+                  res.write(data) // change process.stdout to ya-csv
+                });
+
+                stream.emit('data', channel.config.header + '\n');
             }
 
-            res.contentType(ct);
+            try {
+                var fStream = fs.createReadStream(fileName, {
+                    encoding: 'utf8'
+                });
 
-            var fStream = fs.createReadStream(fileName, {
-                encoding : 'utf8'
-            });
-
-            fStream.on('data', function(data) {
-                data = "[" + data.toString().substr(0, data.length - 2) + "]";
-                var items = JSON.parse(data),
-                    item,
-                    numItems = items.length,
-                    columns = {};
-
-                for (var i = 0; i < items.length; i++) {
-                    item = items[i];
-                    for (var k in item) {
-                        if (item.hasOwnProperty(k)) {
-                            if (!columns[k]) {
-                                columns[k] = {
-                                    data : []
-                                };
-                            }
-                        }
-                    }
-                }
-            });
-
-            fStream.on('end', function() {
-                res.send();
-            });
+                fStream.pipe(res);
+            } catch (e) {
+                log(e.message, channel, 'error');
+                res.send(500);
+            }
         });
     } else {
         res.send(404);
@@ -220,40 +205,37 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
         $resource = this.$resource,
         dao = $resource.dao,
         log = $resource.log,
-        modelName = this.$resource.getDataSourceName('track_list'),
-        exports = imports;
+        modelName = this.$resource.getDataSourceName('track_list');
 
-    (function(imports, channel, sysImports, next) {
-        self._getListFile(channel, function(err, fileName ) {
-            var mode = channel.config.write_mode === 'append' ? 'appendFile' : 'writeFile';
-            fs[mode](fileName, JSON.stringify(imports) + ",\n", function (err) {
-                if (err) {
-                    log(err, channel, 'error');
-                } else {
-                    // update model last_update attribute
-                    dao.updateColumn(
-                        modelName,
-                        {
-                            owner_id : channel.owner_id,
-                            channel_id : channel.id
-                        },
-                        {
-                            last_update : app.helper.nowUTCSeconds()
-                        },
-                        function(err) {
-                            if (err) {
-                                log(err, channel, 'error');
+    if (imports.line_item) {
+        (function(imports, channel, sysImports, next) {
+            self._getListFile(channel, function(err, fileName) {
+                var mode = channel.config.write_mode === 'append' ? 'appendFile' : 'writeFile';
+                fs[mode](fileName,  imports.line_item + "\n", function(err) {
+                    if (err) {
+                        log(err, channel, 'error');
+                    } else {
+                        // update model last_update attribute
+                        dao.updateColumn(
+                            modelName, {
+                                owner_id: channel.owner_id,
+                                channel_id: channel.id
+                            }, {
+                                last_update: app.helper.nowUTCSeconds()
+                            },
+                            function(err) {
+                                if (err) {
+                                    log(err, channel, 'error');
+                                }
                             }
-                        }
-                    );
+                        );
 
-                    next(err, exports);
-                }
+                        next(err, { line_item : imports.line_item });
+                    }
+                });
             });
-
-
-        });
-    })(imports, channel, sysImports, next);
+        })(imports, channel, sysImports, next);
+    }
 }
 
 // -----------------------------------------------------------------------------
