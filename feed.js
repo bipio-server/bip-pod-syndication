@@ -339,12 +339,16 @@ Feed.prototype._createFeedEntity = function(entityStruct, channel, next) {
     if (err) {
       log(err, channel, 'error');
     }
+
     next(
       err,
       {
         id : result.id
       }
       );
+
+    delete model;
+    delete result;
   });
 }
 
