@@ -82,7 +82,8 @@ Subscribe.prototype.getSchema = function() {
           optional: true,
           description : 'Icon URL'
         }
-      }
+      },
+      "required" : [ "url" ]
     },
     "exports": {
       properties : {
