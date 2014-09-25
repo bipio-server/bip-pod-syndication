@@ -45,6 +45,15 @@ List.prototype.getSchema = function() {
                         "$ref": "#/config/definitions/write_mode"
                     }]
                 },
+                "export_file": {
+                    type: "boolean",
+                    "description": "Export File",
+                    "default" : false
+                },
+                "export_file_name": {
+                    type: "string",
+                    "description": "Exported File Name"
+                },
                 'header': {
                     type: "string",
                     description: "File Header"
@@ -82,6 +91,10 @@ List.prototype.getSchema = function() {
                 'line_item': {
                     type: "string",
                     description: "Line Item"
+                },
+                "export_file_name": {
+                    type: "string",
+                    "description": "Exported File Name"
                 }
             },
             "required" : [ "line_item" ]
@@ -196,7 +209,6 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     }
 };
 
-
 /**
  * Invokes (runs) the action.
  */
@@ -210,11 +222,17 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     if (imports.line_item) {
         (function(imports, channel, sysImports, next) {
             self._getListFile(channel, function(err, fileName) {
-                var mode = channel.config.write_mode === 'append' ? 'appendFile' : 'writeFile';
-                fs[mode](fileName,  imports.line_item + "\n", function(err) {
+                var config = channel.config,
+                    mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
+
+                fs[mode](fileName, imports.line_item + "\n", function(err) {
                     if (err) {
                         log(err, channel, 'error');
                     } else {
+                        var exports = {
+                            line_item : imports.line_item
+                        };
+
                         // update model last_update attribute
                         dao.updateColumn(
                             modelName, {
@@ -230,7 +248,59 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                             }
                         );
 
-                        next(err, { line_item : imports.line_item });
+                        if (config.export_file) {
+
+                            config.export_file_name = imports.export_file_name || config.export_file_name;
+
+                            if (!config.export_file_name) {
+                                config.export_file_name = 'list_' + channel.id + '.txt';
+                            }
+
+                            self.pod.getDataDir(channel, 'request', function(err, dataDir) {
+                                if (err) {
+                                    next(err);
+                                } else {
+                                    var localPath = dataDir + config.export_file_name,
+                                        rs = fs.createReadStream(fileName),
+                                        hs = new Stream(),
+                                        ws = fs.createWriteStream(localPath);
+
+                                    hs.on('data', function(data) {
+                                        ws.write(data);
+                                    });
+
+                                    hs.emit('data', channel.config.header + '\n');
+
+                                    rs.pipe(ws);
+
+                                    fs.stat(localPath, function(err, stats) {
+                                        if (err) {
+                                            next(err);
+                                        } else {
+                                            var fileStruct = {
+                                              txId : sysImports.client.id,
+                                              size : stats.size,
+                                              localpath : localPath,
+                                              name : config.export_file_name,
+                                              type : DEFS.CONTENTTYPE_TEXT,
+                                              encoding : 'UTF-8'
+                                            };
+                                            contentParts._files.push(fileStruct);
+
+                                            next(
+                                                false,
+                                                exports,
+                                                contentParts,
+                                                fileStruct.size
+                                            );
+                                        }
+                                    });
+                                }
+                            });
+
+                        } else {
+                            next(err, exports);
+                        }
                     }
                 });
             });
@@ -240,3 +310,31 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
 // -----------------------------------------------------------------------------
 module.exports = List;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
