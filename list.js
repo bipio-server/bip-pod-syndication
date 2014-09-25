@@ -248,7 +248,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                             }
                         );
 
-                        if (config.export_file) {
+                        if (app.helper.isTrue(config.export_file)) {
 
                             config.export_file_name = imports.export_file_name || config.export_file_name;
 
