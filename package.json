@@ -1,6 +1,6 @@
 {
   "name": "bip-pod-syndication",
-  "version": "0.2.15",
+  "version": "0.2.16",
   "author": "Michael Pearson",
   "description": "Syndication Pod for Bipio",
   "keywords": [
@@ -39,5 +39,8 @@
   },
   "engines": {
     "node": ">= 0.10.0"
+  },
+  "publishConfig" : {
+    "registry" : "http://registry.npmjs.org"
   }
 }

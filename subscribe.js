@@ -238,16 +238,15 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   dao = $resource.dao,
   log = $resource.log,
   modelName = this.$resource.getDataSourceName('track_subscribe'),
-  meta;
+  meta,
+  url = app.helper.naturalize(channel.config.url);
 
-  try {
-    var readable = request(app.helper.naturalize(channel.config.url));
-  } catch (e) {
-    next(e.message);
+  if (!/^http(s?)/.test(url)) {
+    next(url + ' - bad protocol');
     return;
   }
 
-  readable
+  var readable = request(url)
   .pipe(new FeedParser())
   .on('error', function(error) {
     log(error, channel);
