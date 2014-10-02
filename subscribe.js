@@ -240,7 +240,14 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta;
 
-  var readable = request(app.helper.naturalize(channel.config.url))
+  try {
+    var readable = request(app.helper.naturalize(channel.config.url));
+  } catch (e) {
+    next(e.message);
+    return;
+  }
+
+  readable
   .pipe(new FeedParser())
   .on('error', function(error) {
     log(error, channel);
