@@ -1,0 +1,527 @@
+{
+  "name": "syndication",
+  "title": "Syndication",
+  "description": "The Syndication Pod lets you subscribe to or create syndications such as RSS/ATOM/JSON or your own custom time-series lists, logs and content feeds.",
+  "url": "",
+  "trackDuplicates": false,
+  "config": {},
+  "auth": {
+    "strategy": "none"
+  },
+  "rpcs": {},
+  "actions": {
+    "list": {
+      "title": "Store a list of items",
+      "description": "Stores content for adjacent channels",
+      "trigger": "invoke",
+      "config": {
+        "properties": {
+          "write_mode": {
+            "type": "string",
+            "description": "Write Mode",
+            "oneOf": [
+              {
+                "$ref": "#/config/definitions/write_mode"
+              }
+            ]
+          },
+          "export_file": {
+            "type": "boolean",
+            "description": "Export File",
+            "default": false
+          },
+          "export_file_name": {
+            "type": "string",
+            "description": "Exported File Name"
+          },
+          "header": {
+            "type": "string",
+            "description": "File Header"
+          }
+        },
+        "definitions": {
+          "write_mode": {
+            "description": "List Write Mode",
+            "enum": [
+              "append",
+              "replace"
+            ],
+            "enum_label": [
+              "Append Entries",
+              "Replace Entries"
+            ],
+            "default": "append"
+          }
+        },
+        "disposition": [
+          "write_mode",
+          "export_file",
+          "export_file_name",
+          "header"
+        ]
+      },
+      "exports": {
+        "properties": {
+          "line_item": {
+            "type": "string",
+            "description": "Line Item"
+          }
+        }
+      },
+      "imports": {
+        "properties": {
+          "line_item": {
+            "type": "string",
+            "description": "Line Item"
+          },
+          "export_file_name": {
+            "type": "string",
+            "description": "Exported File Name"
+          }
+        },
+        "required": [
+          "line_item"
+        ],
+        "disposition": [
+          "line_item",
+          "export_file_name"
+        ]
+      },
+      "rpcs": {
+        "get": {
+          "contentType": "text/plain",
+          "title": "Returns list Content"
+        }
+      }
+    },
+    "feed": {
+      "title": "Create A Feed",
+      "description": "Creates an syndication from content you receive from Bips",
+      "trigger": "invoke",
+      "config": {
+        "properties": {
+          "twitter_handle": {
+            "type": "string",
+            "description": "Twitter Handle (Blog Renderer)"
+          },
+          "github_handle": {
+            "type": "string",
+            "description": "Github Username (Blog Renderer)"
+          },
+          "dribble_handle": {
+            "type": "string",
+            "description": "Dribble Username (Blog Renderer)"
+          },
+          "purge_after": {
+            "type": "string",
+            "description": "Purge after (n) days,weeks,months",
+            "oneOf": [
+              {
+                "$ref": "#/config/definitions/purge_after"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "purge_after": {
+            "description": "Purge Content",
+            "enum": [
+              "never",
+              "30d"
+            ],
+            "enum_label": [
+              "Never",
+              "After 30 Days"
+            ],
+            "default": "never"
+          }
+        },
+        "disposition": [
+          "twitter_handle",
+          "github_handle",
+          "dribble_handle",
+          "purge_after"
+        ]
+      },
+      "exports": {
+        "properties": {}
+      },
+      "imports": {
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Title"
+          },
+          "description": {
+            "type": "text",
+            "description": "Description"
+          },
+          "summary": {
+            "type": "text",
+            "description": "Article Summary"
+          },
+          "url": {
+            "type": "string",
+            "description": "Source URL"
+          },
+          "created_time": {
+            "type": "string",
+            "description": "UTC Created Time"
+          },
+          "author": {
+            "type": "string",
+            "description": "Author"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Source Icon"
+          },
+          "category": {
+            "type": "string",
+            "description": "Category Name"
+          }
+        },
+        "disposition": [
+          "title",
+          "description",
+          "summary",
+          "url",
+          "created_time",
+          "author",
+          "image",
+          "icon",
+          "category"
+        ]
+      },
+      "rpcs": {
+        "rss": {
+          "description": "Serves stored items as an RSS 2.0 Feed",
+          "contentType": "text/xml",
+          "title": "RSS 2.0"
+        },
+        "json": {
+          "description": "Serves stored items as JSON",
+          "contentType": "application/json",
+          "title": "JSON"
+        },
+        "blog": {
+          "description": "Blogging Format",
+          "contentType": "text/html",
+          "title": "Blog"
+        },
+        "remove_by_bip": {
+          "description": "Removes a feed entity by its originating Bip ID",
+          "contentType": "application/json",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Bip ID",
+              "required": true
+            }
+          },
+          "title": "Remove By Bip ID"
+        },
+        "remove_entity": {
+          "description": "Removes a feed entity by its GUID",
+          "contentType": "application/json",
+          "properties": {
+            "guid": {
+              "type": "string",
+              "description": "Entity ID",
+              "required": true
+            }
+          },
+          "title": "Remove Feed Entity"
+        }
+      }
+    },
+    "subscribe": {
+      "title": "Subscribe to a Feed",
+      "description": "Subscribes to an RSS/ATOM/RDF Feed",
+      "trigger": "poll",
+      "config": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "optional": false,
+            "unique": true,
+            "description": "Feed URL"
+          },
+          "icon": {
+            "type": "string",
+            "optional": true,
+            "description": "Icon URL"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "disposition": [
+          "url",
+          "icon"
+        ]
+      },
+      "exports": {
+        "properties": {
+          "guid": {
+            "type": "string",
+            "description": "GUID"
+          },
+          "title": {
+            "type": "string",
+            "description": "Title"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description"
+          },
+          "summary": {
+            "type": "string",
+            "description": "Article Summary"
+          },
+          "link": {
+            "type": "string",
+            "description": "Link"
+          },
+          "date": {
+            "type": "string",
+            "description": "Date"
+          },
+          "pubdate": {
+            "type": "string",
+            "description": "Published Date"
+          },
+          "author": {
+            "type": "string",
+            "description": "Author"
+          },
+          "image": {
+            "type": "string",
+            "description": "Image"
+          },
+          "icon": {
+            "type": "string",
+            "description": "Source Icon"
+          }
+        }
+      },
+      "imports": {
+        "properties": {}
+      }
+    }
+  },
+  "dataSources": {
+    "track_list": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false,
+          "unique": true
+        },
+        "owner_id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false
+        },
+        "created": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "last_update": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "channel_id": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "last_build": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        }
+      },
+      "keys": [
+        "channel_id"
+      ]
+    },
+    "feed": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false,
+          "unique": true
+        },
+        "owner_id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false
+        },
+        "channel_id": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "created": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        },
+        "last_update": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        },
+        "last_build": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        }
+      },
+      "keys": [
+        "channel_id",
+        "owner_id"
+      ]
+    },
+    "feed_entity": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "index": true,
+          "renderable": true,
+          "writable": false,
+          "unique": true
+        },
+        "feed_id": {
+          "type": "string",
+          "index": true,
+          "renderable": true,
+          "writable": false
+        },
+        "created": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        },
+        "entity_created": {
+          "type": "number",
+          "index": true,
+          "renderable": true,
+          "writable": false
+        },
+        "title": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "description": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "summary": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "url": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "image": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "icon": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "image_dim": {
+          "type": "mixed",
+          "renderable": true,
+          "writable": false
+        },
+        "author": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "category": {
+          "type": "array",
+          "index": true,
+          "renderable": true,
+          "writable": false
+        },
+        "src_bip_id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false
+        },
+        "favorited": {
+          "type": "boolean",
+          "default": false,
+          "renderable": true,
+          "writable": false
+        }
+      },
+      "keys": [
+        "id"
+      ]
+    },
+    "track_subscribe": {
+      "properties": {
+        "id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false,
+          "unique": true
+        },
+        "owner_id": {
+          "type": "string",
+          "renderable": false,
+          "writable": false
+        },
+        "created": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        },
+        "last_update": {
+          "type": "number",
+          "renderable": true,
+          "writable": false
+        },
+        "channel_id": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "bip_id": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        },
+        "guid": {
+          "type": "string",
+          "renderable": true,
+          "writable": false
+        }
+      },
+      "keys": [
+        "id"
+      ]
+    }
+  }
+}

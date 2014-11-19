@@ -374,6 +374,8 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
       function(err, result) {
         if (err) {
           log(err, channel, 'error');
+        } else if (!result) {
+          log('Channel Setup Failure', channel, 'error');
         } else {
           // set last update time (now)
           dao.updateColumn(
