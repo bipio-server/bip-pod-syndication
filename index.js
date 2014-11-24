@@ -19,19 +19,7 @@
  * along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 var Pod = require('bip-pod'),
-    Syndication = new Pod({
-        name : 'syndication',
-        title : 'Syndication',
-        description : 'The Syndication Pod lets you subscribe to or create syndications such as RSS/ATOM/JSON or your own custom time-series lists, logs and content feeds.',
-        dataSources : [
-            require('./models/track_list'),
-            require('./models/feed'),
-            require('./models/feed_entity'),
-            require('./models/track_subscribe'),
-        ]
-    });
-
-
+    Syndication = new Pod();
 
 Syndication.add(require('./list.js'));
 Syndication.add(require('./feed.js'));

@@ -23,84 +23,10 @@ var fs = require('fs'),
     Stream = require('stream');
 
 function List(podConfig) {
-    this.name = 'list';
-    this.title = 'Store a list of items',
-    this.description = 'Stores content for adjacent channels',
-    this.trigger = false; // this action can trigger
-    this.singleton = false; // only 1 instance per account (can auto install)
-    this.auto = false; // no config, not a singleton but can auto-install anyhow
     this.podConfig = podConfig; // general system level config for this pod (transports etc)
 }
 
 List.prototype = {};
-
-List.prototype.getSchema = function() {
-    return {
-        'config': {
-            properties: {
-                "write_mode": {
-                    type: "string",
-                    "description": "Write Mode",
-                    oneOf: [{
-                        "$ref": "#/config/definitions/write_mode"
-                    }]
-                },
-                "export_file": {
-                    type: "boolean",
-                    "description": "Export File",
-                    "default" : false
-                },
-                "export_file_name": {
-                    type: "string",
-                    "description": "Exported File Name"
-                },
-                'header': {
-                    type: "string",
-                    description: "File Header"
-                }
-            },
-            "definitions": {
-                "write_mode": {
-                    "description": "List Write Mode",
-                    "enum": ["append", "replace"],
-                    "enum_label": ["Append Entries", "Replace Entries"],
-                    "default": "append"
-                }
-            }
-        },
-        'renderers': {
-            'get': {
-                description: 'Returns list Content',
-                contentType: DEFS.CONTENTTYPE_TEXT
-
-            }
-        },
-
-        'exports': {
-            properties: {
-                'line_item': {
-                    type: "string",
-                    description: "Line Item"
-                }
-            }
-        },
-
-        // No import, consumes and stores any adjacent export
-        imports: {
-            properties: {
-                'line_item': {
-                    type: "string",
-                    description: "Line Item"
-                },
-                "export_file_name": {
-                    type: "string",
-                    "description": "Exported File Name"
-                }
-            },
-            "required" : [ "line_item" ]
-        }
-    }
-}
 
 List.prototype._getListFile = function(channel, next) {
     var dataDir = this.pod.getDataDir(channel, 'list');

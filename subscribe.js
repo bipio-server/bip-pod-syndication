@@ -26,14 +26,6 @@ moment = require('moment');
 
 function Subscribe(podConfig, pod) {
   var self = this;
-  this.name = 'subscribe';
-  this.title = 'Subscribe to a Feed',
-  this.description = 'Subscribes to an RSS/ATOM/RDF Feed',
-  this.trigger = true; // this action can trigger
-  this.singleton = false; // only 1 instance per account (can auto install)
-  this.auto = false; // no config, not a singleton but can auto-install anyhow
-  this.podConfig = podConfig; // general system level config for this pod (transports etc)
-
   pod.registerCron(this.name, '0 0 * * * *', function() {
     self.expireTracker.apply(self);
   });
@@ -65,71 +57,6 @@ Subscribe.prototype.expireTracker = function() {
       }
     }
     );
-}
-
-Subscribe.prototype.getSchema = function() {
-  return {
-    'config' : {
-      properties : {
-        url : {
-          type : 'string',
-          optional: false,
-          unique : true,
-          description : 'Feed URL'
-        },
-        icon : {
-          type : 'string',
-          optional: true,
-          description : 'Icon URL'
-        }
-      },
-      "required" : [ "url" ]
-    },
-    "exports": {
-      properties : {
-        'guid' : {
-          type : 'string',
-          description : 'GUID'
-        },
-        'title' : {
-          type : 'string',
-          description : 'Title'
-        },
-        'description' : {
-          type : 'string',
-          description : 'Description'
-        },
-        'summary' : {
-          type : 'string',
-          description : 'Article Summary'
-        },
-        'link' : {
-          type : 'string',
-          description : 'Link'
-        },
-        'date' : {
-          type : 'string',
-          description : 'Date'
-        },
-        'pubdate' : {
-          type : 'string',
-          description : 'Published Date'
-        },
-        'author' : {
-          type : 'string',
-          description : 'Author'
-        },
-        'image' : {
-          type : 'string',
-          description : 'Image'
-        },
-        'icon' : {
-          type : 'string',
-          description : 'Source Icon'
-        }
-      }
-    }
-  }
 }
 
 Subscribe.prototype.setChannelIcon = function(channel, cdnURI) {
@@ -202,7 +129,6 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
     next(e, 'channel', channel);
   }
 }
-
 
 /**
  * deletes subscription tracking

@@ -21,26 +21,17 @@
  */
 
 var moment = require('moment'),
-RSSFeed = require('rss'),
-fs = require('fs'),
-path = require('path'),
-ejs = require('ejs'),
-request = require('request'),
-imagemagick = require('imagemagick');
-htmlparser = require('htmlparser2');
-
+  RSSFeed = require('rss'),
+  fs = require('fs'),
+  path = require('path'),
+  validator = require('validator'),
+  ejs = require('ejs'),
+  request = require('request'),
+  imagemagick = require('imagemagick');
+  htmlparser = require('htmlparser2');
 
 function Feed(podConfig, pod) {
   var self = this;
-
-  this.name = 'feed';
-  this.title = 'Create A Feed',
-  this.description = 'Creates an syndication from content you receive from Bips',
-  this.trigger = false; // this action can trigger
-  this.singleton = false; // only 1 instance per account (can auto install)
-  this.auto = false; // no config, not a singleton but can auto-install anyhow
-  this.podConfig = podConfig; // general system level config for this pod (transports etc)
-
   pod.registerCron(this.name, '0 0 * * * *', function() {
     self.expireFeeds.apply(self);
   });
@@ -114,132 +105,6 @@ Feed.prototype.expireFeeds = function() {
       }
     }
     );
-}
-
-Feed.prototype.getSchema = function() {
-  return {
-    'renderers' : {
-      'rss' : {
-        description : 'RSS 2.0',
-        description_long : 'Serves stored items as an RSS 2.0 Feed',
-        contentType : DEFS.CONTENTTYPE_XML
-      },
-      'json' : {
-        description : 'JSON',
-        description_long : 'Serves stored items as JSON',
-        contentType : DEFS.CONTENTTYPE_JSON
-      },
-      'blog' : {
-        description : 'Blog',
-        description_long : 'Blogging Format',
-        contentType : DEFS.CONTENTTYPE_HTML
-      },
-      'remove_by_bip' : {
-        description : 'Remove By Bip ID',
-        description_long : 'Removes a feed entity by its originating Bip ID',
-        contentType : DEFS.CONTENTTYPE_JSON,
-        properties : {
-          id : {
-            type : 'string',
-            description : 'Bip ID',
-            required : true
-          }
-        }
-      },
-      'remove_entity' : {
-        description : 'Remove Feed Entity',
-        description_long : 'Removes a feed entity by its GUID',
-        contentType : DEFS.CONTENTTYPE_JSON,
-        properties : {
-          guid : {
-            type : 'string',
-            description : 'Entity ID',
-            required : true
-          }
-        }
-      }
-    },
-    'config' : {
-      properties : {
-        twitter_handle : {
-          type : 'string',
-          description : 'Twitter Handle (Blog Renderer)'
-        },
-        github_handle : {
-          type : 'string',
-          description : 'Github Username (Blog Renderer)'
-        },
-        dribble_handle : {
-          type : 'string',
-          description : 'Dribble Username (Blog Renderer)'
-        },
-        purge_after : {
-          type : 'string',
-          description : 'Purge after (n) days,weeks,months',
-          oneOf : [
-          {
-            "$ref" : "#/config/definitions/purge_after"
-          }
-          ]
-        }
-      },
-      definitions : {
-        purge_after : {
-          "description" : "Purge Content",
-          "enum" : [ "never" , "30d" ],
-          "enum_label" : [ "Never" , "After 30 Days" ],
-          'default' : 'never'
-        }
-      }
-    },
-    "imports": {
-      properties : {
-        'title' : {
-          type : 'string',
-          description : 'Title'
-        },
-        'description' : {
-          type : 'text',
-          description : 'Description'
-        },
-        'summary' : {
-          type : 'text',
-          description : 'Article Summary'
-        },
-        'url' : {
-          type : 'string',
-          description : 'Source URL'
-        },
-        'created_time' : {
-          type : 'string',
-          description : 'UTC Created Time'
-        },
-
-        'author' : {
-          type : 'string',
-          description : 'Author'
-        },
-        'image' : {
-          type : 'string',
-          description : 'Image'
-        },
-
-        'icon' : {
-          type : 'string',
-          description : 'Source Icon'
-        },
-
-        'category' : {
-          type : 'string',
-          description : 'Category Name'
-        },
-        'created_time' : {
-          type : 'string',
-          description : 'UTC Created Time'
-        }
-      }
-    }
-  }
 }
 
 Feed.prototype.setup = function(channel, accountInfo, next) {
@@ -605,7 +470,9 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
 
             res.contentType(self.getSchema().renderers[method].contentType);
-            res.send($resource.htmlNormalize(payload));
+            res.send(
+              validator.sanitize(payload).entityDecode()
+            );
           }
         });
     })(method, channel, req, res);
