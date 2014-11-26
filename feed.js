@@ -429,7 +429,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
               }
             };
             var renderOpts = {
-              content_type : self.getSchema().renderers.rss.contentType
+              content_type : self.pod.getActionRPC(self.name, method).contentType
             };
 
             var payload;
