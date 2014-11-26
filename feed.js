@@ -469,7 +469,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
               }
             }
 
-            res.contentType(self.getSchema().renderers[method].contentType);
+            res.contentType(self.pod.getActionRPC(self.name, method).contentType);
             res.send(
               validator.sanitize(payload).entityDecode()
             );
