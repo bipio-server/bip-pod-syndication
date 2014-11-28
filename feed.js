@@ -24,7 +24,6 @@ var moment = require('moment'),
   RSSFeed = require('rss'),
   fs = require('fs'),
   path = require('path'),
-  validator = require('validator'),
   ejs = require('ejs'),
   request = require('request'),
   imagemagick = require('imagemagick');
@@ -470,9 +469,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
 
             res.contentType(self.pod.getActionRPC(self.name, method).contentType);
-            res.send(
-              validator.sanitize(payload).entityDecode()
-            );
+            res.send(payload);
           }
         });
     })(method, channel, req, res);
