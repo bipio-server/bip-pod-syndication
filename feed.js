@@ -117,8 +117,8 @@ Feed.prototype.setup = function(channel, accountInfo, next) {
     var feedStruct = {
       owner_id : channel.owner_id,
       channel_id : channel.id,
-      last_update : app.helper.nowUTCSeconds(),
-      last_build : app.helper.nowUTCSeconds()
+      last_update : $resource.helper.nowUTCSeconds(),
+      last_build : $resource.helper.nowUTCSeconds()
     }
 
     model = dao.modelFactory(modelName, feedStruct, accountInfo);
@@ -186,10 +186,12 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
  * push to local cdn path (public)
  */
 Feed.prototype._pushImageCDN = function(channel, srcUrl, next) {
+  var $resource = this.$resource;
+
   this.pod.getCDNDir(channel, 'feed', function(err, path) {
     if (!err) {
-      var dstFile = path + app.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
-      app.cdn.httpFileSnarf(srcUrl, dstFile, next);
+      var dstFile = path + $resource.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
+      $resource._httpStreamToFile(srcUrl, dstFile, next);
     }
   });
 }
@@ -248,7 +250,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
               id : result.id
             },
             {
-              last_update : app.helper.nowUTCSeconds()
+              last_update : $resource.helper.nowUTCSeconds()
             }
             );
 
@@ -257,7 +259,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           var createTime = moment(imports.created_time).unix();
 
           if (isNaN(createTime)) {
-            createTime = Math.floor(app.helper.nowUTCSeconds() / 1000);
+            createTime = Math.floor($resource.helper.nowUTCSeconds() / 1000);
           }
 
           var parser = new htmlparser.Parser({
@@ -286,7 +288,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             src_bip_id : sysImports.bip.id
           }
 
-          entityStruct = app.helper.pasteurize(entityStruct, true);
+          entityStruct = $resource.helper.pasteurize(entityStruct, true);
 
           // if we have an image, push it into cdn
           if (imports.image) {
@@ -595,7 +597,7 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
                 id : feedMeta[0].id
               },
               {
-                last_build : app.helper.nowUTCSeconds()
+                last_build : $resource.helper.nowUTCSeconds()
               }
               );
             res.send({

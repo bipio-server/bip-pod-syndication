@@ -52,8 +52,8 @@ List.prototype.setup = function(channel, accountInfo, next) {
                 var listStruct = {
                     owner_id: channel.owner_id,
                     channel_id: channel.id,
-                    last_update: app.helper.nowUTCSeconds(),
-                    last_build: app.helper.nowUTCSeconds()
+                    last_update: $resource.helper.nowUTCSeconds(),
+                    last_build: $resource.helper.nowUTCSeconds()
                 }
 
                 model = dao.modelFactory(modelName, listStruct, accountInfo);
@@ -165,7 +165,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                                 owner_id: channel.owner_id,
                                 channel_id: channel.id
                             }, {
-                                last_update: app.helper.nowUTCSeconds()
+                                last_update: $resource.helper.nowUTCSeconds()
                             },
                             function(err) {
                                 if (err) {
@@ -174,7 +174,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                             }
                         );
 
-                        if (app.helper.isTrue(config.export_file)) {
+                        if ($resource.helper.isTruthy(config.export_file)) {
 
                             config.export_file_name = imports.export_file_name || config.export_file_name;
 

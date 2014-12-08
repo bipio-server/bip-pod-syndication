@@ -165,7 +165,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   log = $resource.log,
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta,
-  url = app.helper.naturalize(channel.config.url);
+  url = $resource.helper.naturalize(channel.config.url);
 
   if (!/^http(s?)/.test(url)) {
     next(url + ' - bad protocol');

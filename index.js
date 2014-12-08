@@ -21,9 +21,5 @@
 var Pod = require('bip-pod'),
     Syndication = new Pod();
 
-Syndication.add(require('./list.js'));
-Syndication.add(require('./feed.js'));
-Syndication.add(require('./subscribe.js'));
-
 // -----------------------------------------------------------------------------
 module.exports = Syndication;
