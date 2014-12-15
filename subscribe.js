@@ -22,7 +22,6 @@
 
 var FeedParser = require('feedparser'),
   request = require('request'),
-  moment = require('moment'),
   crypto = require('crypto'),
   favitest = require('favitest');
 
@@ -39,37 +38,14 @@ Subscribe.prototype = {};
  * Dumps any syndication GUID's tracked over 30 days ago
  */
 Subscribe.prototype.expireTracker = function() {
-  var self = this,
-  modelName = self.$resource.getDataSourceName('track_subscribe'),
-  maxTime = (new Date()).getTime() - (30 * 24 * 60 * 60 * 1000);
-
-  self.$resource.dao.removeFilter(
-    modelName,
-    {
-      'created' : {
-        '$lt' : maxTime
-      }
-    },
-    function(err) {
-      if (err) {
-        self.log(err, {
-          owner_id : 'SYSTEM',
-          action : self._name
-        }, 'error');
-      }
+  var self = this;
+  self.pod.expireDups(channel, 30, function(err) {
+    if (err) {
+      self.log(err, {
+        owner_id : 'SYSTEM',
+        action : self._name
+      }, 'error');
     }
-    );
-}
-
-Subscribe.prototype.setChannelIcon = function(channel, cdnURI) {
-  var newConfig = app._.clone(channel.config),
-  dao = this.$resource.dao;
-
-  channel.config.icon = newConfig.icon = cdnURI;
-  dao.updateColumn('channel', {
-    id : channel.id
-  }, {
-    config : newConfig
   });
 }
 
@@ -136,28 +112,19 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
   }
 }
 
-/**
- * deletes subscription tracking
- */
-Subscribe.prototype.teardown = function(channel, accountInfo, next) {
-  var $resource = this.$resource,
-  self = this,
-  dao = $resource.dao,
-  log = $resource.log,
-  modelName = this.$resource.getDataSourceName('track_subscribe');
+Subscribe.prototype.trigger = function(imports, channel, sysImports, contentParts, next) {
+  var self = this,
+    $resource = this.$resource;
 
-  dao.removeFilter(
-    modelName,
-    {
-      owner_id : channel.owner_id,
-      channel_id : channel.id
-    },
-    function(err) {
-      if (err) {
-        log(err, channel, 'error');
-      }
-      next(err, modelName, null);
-    });
+  this.invoke(imports, channel, sysImports, contentParts, function(err, exports) {
+    if (err) {
+      next(err);
+    } else {
+      $resource.dupFilter(exports, 'guid', channel, sysImports, function(err, entity) {
+        next(err, addr);
+      });
+    }
+  });
 }
 
 
@@ -181,8 +148,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   var readable = request(url)
   .pipe(new FeedParser())
   .on('error', function(error) {
-    log(error, channel);
-    next(true);
+    next(error);
   })
   .on('readable', function() {
     var chunk;
@@ -200,50 +166,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
         icon : channel.config.icon
       };
 
-      (function(channel, chunk, next) {
-        // push to tracking
-        dao.find(
-          modelName,
-          {
-            owner_id : channel.owner_id,
-            channel_id : channel.id,
-            guid : chunk.guid,
-            bip_id : sysImports.bip.id
-          },
-          function(err, result) {
-            var now = moment().unix(),
-            pubdate;
-
-            if (err) {
-              log(err, channel, 'error');
-            } else {
-              pubdate = moment(chunk.pubdate).unix();
-              if (!result) {
-                var model = dao.modelFactory(modelName, {
-                  owner_id : channel.owner_id,
-                  channel_id : channel.id,
-                  guid : chunk.guid,
-                  bip_id : sysImports.bip.id,
-                  last_update : pubdate
-                });
-
-                dao.create(model);
-
-                next(false, exports);
-              } else {
-                if (pubdate > result.last_update) {
-                  dao.updateColumn(modelName, {
-                    id : result.id
-                  },  {
-                    last_update : pubdate
-                  });
-                  next(false, exports);
-                }
-              }
-            }
-          }
-          );
-      })(channel, chunk, next);
+      next(false, exports);
     }
   })
   .on('end', function() {

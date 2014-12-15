@@ -3,7 +3,7 @@
   "title": "Syndication",
   "description": "The Syndication Pod lets you subscribe to or create syndications such as RSS/ATOM/JSON or your own custom time-series lists, logs and content feeds.",
   "url": "",
-  "trackDuplicates": false,
+  "trackDuplicates": true,
   "config": {},
   "auth": {
     "strategy": "none"
