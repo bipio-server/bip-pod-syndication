@@ -21,8 +21,10 @@
  */
 
 var FeedParser = require('feedparser'),
-request = require('request'),
-moment = require('moment');
+  request = require('request'),
+  moment = require('moment'),
+  crypto = require('crypto'),
+  favitest = require('favitest');
 
 function Subscribe(podConfig, pod) {
   var self = this;
@@ -74,6 +76,7 @@ Subscribe.prototype.setChannelIcon = function(channel, cdnURI) {
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
   var $resource = this.$resource,
   self = this,
+  podConfig = this.
   dao = $resource.dao,
   log = $resource.log;
 
@@ -85,8 +88,6 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
       next(error, 'channel', channel);
     })
     .on('meta', function (meta) {
-      //next(false, 'channel', channel);
-
       // auto discover description
       var updateCols = {}, newName;
 
@@ -108,17 +109,22 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
       }
 
       if ( (!channel.config.icon || '' === channel.config.icon) && meta.link && '' !== meta.link) {
-        app.cdn.getFavicon(channel.config.url, function(err, cdnURI) {
+        favitest(channel.config.url, function(err, favURL, suffix, mime, domain) {
           if (!err) {
-            if (cdnURI) {
-              self.setChannelIcon(channel, cdnURI);
-            } else {
-              app.cdn.getFavicon(meta.link, function(err, cdnURI) {
-                if (!err && cdnURI) {
-                  self.setChannelIcon(channel, cdnURI);
+            var domainHash = crypto.createHash('md5').update(domain.toLowerCase()).digest("hex"),
+              icoPath = self.pod.getCDNDir.call(self.pod, channel, 'syndication', 'img') +  domainHash + suffix;
+
+            $resource.file.save(
+              icoPath,
+              request.get(favURL),
+              {
+                persist : true
+              },
+              function(err, struct) {
+                if (!err) {
+                  $resource.dao.updateChannelIcon(channel, $resource.getCDNURL() + '/' + icoPath);
                 }
               });
-            }
           }
         });
       }
@@ -181,7 +187,6 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   .on('readable', function() {
     var chunk;
     while (null !== (chunk = readable.read())) {
-      //console.log(chunk);
       var exports = {
         guid : chunk.guid,
         title : chunk.title,
@@ -193,7 +198,6 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
         author : chunk.author,
         image : chunk.image.url || '',
         icon : channel.config.icon
-      // categories : chunk.categories
       };
 
       (function(channel, chunk, next) {

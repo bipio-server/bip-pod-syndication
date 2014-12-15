@@ -26,6 +26,7 @@
   "main": ".",
   "dependencies": {
     "ejs": ">=0.7.1",
+    "favitest": "^1.0.3",
     "feedparser": ">=0.16.2",
     "htmlparser2": ">=3.4.0",
     "imagemagick": ">=0.1.3",
