@@ -151,7 +151,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                 var config = channel.config,
                     mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
-                fs[mode](fileName, imports.line_item + "\n", function(err) {
+                $resource.file.save(fileName, imports.line_item + "\n", { append: config.write_mode }, function(err, struct1) {
                     if (err) {
                         log(err, channel, 'error');
                     } else {
@@ -182,46 +182,10 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                                 config.export_file_name = 'list_' + channel.id + '.txt';
                             }
 
-                            self.pod.getDataDir(channel, 'request', function(err, dataDir) {
-                                if (err) {
-                                    next(err);
-                                } else {
-                                    var localPath = dataDir + config.export_file_name,
-                                        rs = fs.createReadStream(fileName),
-                                        hs = new Stream(),
-                                        ws = fs.createWriteStream(localPath);
-
-                                    hs.on('data', function(data) {
-                                        ws.write(data);
-                                    });
-
-                                    hs.emit('data', channel.config.header + '\n');
-
-                                    rs.pipe(ws);
-
-                                    fs.stat(localPath, function(err, stats) {
-                                        if (err) {
-                                            next(err);
-                                        } else {
-                                            var fileStruct = {
-                                              txId : sysImports.client.id,
-                                              size : stats.size,
-                                              localpath : localPath,
-                                              name : config.export_file_name,
-                                              type : DEFS.CONTENTTYPE_TEXT,
-                                              encoding : 'UTF-8'
-                                            };
-                                            contentParts._files.push(fileStruct);
-
-                                            next(
-                                                false,
-                                                exports,
-                                                contentParts,
-                                                fileStruct.size
-                                            );
-                                        }
-                                    });
-                                }
+                            $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, fileName, { header: channel.config.header }, function(err, struct2) {
+                                if (err) next(err);
+                                contentParts._files.push(struct2);
+                                next( false, exports, contentParts, struct2.size );
                             });
 
                         } else {
