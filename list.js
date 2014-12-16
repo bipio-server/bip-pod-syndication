@@ -43,7 +43,7 @@ List.prototype.setup = function(channel, accountInfo, next) {
         modelName = this.$resource.getDataSourceName('track_list');
 
     (function(channel, accountInfo, next) {
-        self._getListFile(channel, function(err, fileName) {
+        $resource.file.get(channel, function(err, file, readStream) {
             if (err) {
                 log(err, channel, 'error');
                 next(err, 'channel', channel);
@@ -60,11 +60,11 @@ List.prototype.setup = function(channel, accountInfo, next) {
 
                 dao.create(model, function(err, result) {
                     // touch the  source file
-                    fs.writeFile(fileName, "", function(err) {
+                    fs.writeFile(file.localpath, "", function(err) {
                         if (err) {
                             log(err, channel, 'error');
                         } else {
-                            log('created container ' + fileName, channel);
+                            log('created container ' + file.localpath, channel);
                         }
 
                         next(err, 'channel', channel); // ok
@@ -82,9 +82,9 @@ List.prototype.teardown = function(channel, accountInfo, next) {
         log = $resource.log;
 
     // drop list file
-    self._getListFile(channel, function(err, fileName) {
+    $resource.file.get(channel, function(err, file, readStream) {
         if (!err) {
-            fs.unlink(fileName);
+            fs.unlink(file.localpath);
             dao.removeFilter(
                 $resource.getDataSourceName('track_list'), {
                     owner_id: channel.owner_id,
@@ -107,7 +107,7 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
         modelName = $resource.getDataSourceName('track_list');
 
     if ('get' === method) {
-        this._getListFile(channel, function(err, fileName) {
+        $resource.file.get(channel, function(err, file, fStream) {
             res.contentType(self.getSchema().renderers.get.contentType);
 
             if (channel.config.header) {
@@ -120,10 +120,6 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
 
             try {
-                var fStream = fs.createReadStream(fileName, {
-                    encoding: 'utf8'
-                });
-
                 fStream.pipe(res);
             } catch (e) {
                 log(e.message, channel, 'error');
@@ -147,7 +143,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
     if (imports.line_item) {
         (function(imports, channel, sysImports, next) {
-            self._getListFile(channel, function(err, fileName) {
+            $resource.file.get(channel, function(err, file, readStream) {
                 var config = channel.config,
                     mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
@@ -182,7 +178,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                                 config.export_file_name = 'list_' + channel.id + '.txt';
                             }
 
-                            $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, fileName, { header: channel.config.header }, function(err, struct2) {
+                            $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, file.localpath, { header: channel.config.header }, function(err, struct2) {
                                 if (err) next(err);
                                 contentParts._files.push(struct2);
                                 next( false, exports, contentParts, struct2.size );
