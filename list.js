@@ -37,57 +37,25 @@ List.prototype._getListFile = function(channel, next) {
 
 List.prototype.setup = function(channel, accountInfo, next) {
     var $resource = this.$resource,
-        self = this,
-        dao = $resource.dao,
-        log = $resource.log,
-        modelName = this.$resource.getDataSourceName('track_list');
-
-    (function(channel, accountInfo, next) {
-        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt", 
-
-        var listStruct = {
-            owner_id: channel.owner_id,
-            channel_id: channel.id,
-            last_update: $resource.helper.nowUTCSeconds(),
-            last_build: $resource.helper.nowUTCSeconds()
-        }
-
-        model = dao.modelFactory(modelName, listStruct, accountInfo);
-
-        dao.create(model, function(err, result) {
-            // touch the  source file
-            $resource.file.save(fileName, new Buffer(""), {write: true}, function(err, file) {
-                if (err) {
-                    log(err, channel, 'error');
-                } else {
-                    log('created container ' + file.localpath, channel);
-                }
-
-                next(err, 'channel', channel); // ok
-            });
-        }, accountInfo);
-    })(channel, accountInfo, next);
+        fileName = this.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+    // touch the  source file
+    $resource.file.save(
+        fileName,
+        new Buffer(""),
+        {
+            write: true,
+            persist : true
+        },
+        next
+    );
 }
 
 List.prototype.teardown = function(channel, accountInfo, next) {
-    var $resource = this.$resource,
-        self = this,
-        dao = $resource.dao,
-        log = $resource.log;
-
+    next(false);
+    return;
     // drop list file
-    var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt";
-
-    $resource.file.remove(fileName, function(err) {
-        if (err) next(err); 
-        dao.removeFilter(
-            $resource.getDataSourceName('track_list'), {
-                owner_id: channel.owner_id,
-                channel_id: channel.id
-            },
-            next
-        );
-    });
+    var fileName = this.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+    this.$resource.file.remove(fileName, { persist : true }, next);
 }
 
 
@@ -95,12 +63,12 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     var $resource = this.$resource,
         self = this,
         dao = $resource.dao,
-        log = $resource.log,
-        modelName = $resource.getDataSourceName('track_list');
+        log = $resource.log;
 
     if ('get' === method) {
-        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt",
-        res.contentType(self.getSchema().renderers.get.contentType);
+        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+
+        res.contentType(self.getRPCs('get').contentType);
 
         if (channel.config.header) {
             var stream = new Stream();
@@ -114,7 +82,7 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
         try {
             $resource.file.get(fileName, function(err, file, fStream){
                 fStream.pipe(res);
-            });        
+            });
         } catch (e) {
             log(e.message, channel, 'error');
             res.send(500);
@@ -131,59 +99,49 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     var self = this,
         $resource = this.$resource,
         dao = $resource.dao,
-        log = $resource.log,
-        modelName = this.$resource.getDataSourceName('track_list');
+        log = $resource.log;
 
     if (imports.line_item) {
-        (function(imports, channel, sysImports, next) {
-            var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt",
-            config = channel.config,
-            mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
-                $resource.file.save(fileName, new Buffer(imports.line_item + "\n"), { append: (mode === 'appendFile'), write: (mode === 'writeFile') }, function(err, struct1) {
-                    if (err) {
-                        log(err, channel, 'error');
-                    } else {
-                        var exports = {
-                            line_item : imports.line_item
-                        };
+        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt",
+        config = channel.config,
+        mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
-                        // update model last_update attribute
-                        dao.updateColumn(
-                            modelName, {
-                                owner_id: channel.owner_id,
-                                channel_id: channel.id
-                            }, {
-                                last_update: $resource.helper.nowUTCSeconds()
-                            },
-                            function(err) {
-                                if (err) {
-                                    log(err, channel, 'error');
-                                }
-                            }
-                        );
+        $resource.file.save(
+            fileName,
+            new Buffer(imports.line_item + "\n"),
+            {
+                append: (mode === 'appendFile'),
+                write: (mode === 'writeFile')
+            },
+            function(err, struct1) {
+                if (err) {
+                    next(err);
+                } else {
+                    var exports = {
+                        line_item : imports.line_item
+                    };
 
-                        if ($resource.helper.isTruthy(config.export_file)) {
+                    if ($resource.helper.isTruthy(config.export_file)) {
 
-                            config.export_file_name = imports.export_file_name || config.export_file_name;
+                        config.export_file_name = imports.export_file_name || config.export_file_name;
 
-                            if (!config.export_file_name) {
-                                config.export_file_name = 'list_' + channel.id + '.txt';
-                            }
-
-                            $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, file.localpath, { header: channel.config.header }, function(err, struct2) {
-                                if (err) next(err);
-                                contentParts._files.push(struct2);
-                                next( false, exports, contentParts, struct2.size );
-                            });
-
-                        } else {
-                            next(err, exports);
+                        if (!config.export_file_name) {
+                            config.export_file_name = 'list_' + channel.id + '.txt';
                         }
+
+                        $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, file.localpath, { header: channel.config.header }, function(err, struct2) {
+                            if (err) next(err);
+                            contentParts._files.push(struct2);
+                            next( false, exports, contentParts, struct2.size );
+                        });
+
+                    } else {
+                        next(err, exports);
                     }
-                });
-            });
-        })(imports, channel, sysImports, next);
+                }
+            }
+        );
     }
 }
 
