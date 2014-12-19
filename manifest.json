@@ -315,44 +315,6 @@
     }
   },
   "dataSources": {
-    "track_list": {
-      "properties": {
-        "id": {
-          "type": "string",
-          "renderable": false,
-          "writable": false,
-          "unique": true
-        },
-        "owner_id": {
-          "type": "string",
-          "renderable": false,
-          "writable": false
-        },
-        "created": {
-          "type": "string",
-          "renderable": true,
-          "writable": false
-        },
-        "last_update": {
-          "type": "string",
-          "renderable": true,
-          "writable": false
-        },
-        "channel_id": {
-          "type": "string",
-          "renderable": true,
-          "writable": false
-        },
-        "last_build": {
-          "type": "string",
-          "renderable": true,
-          "writable": false
-        }
-      },
-      "keys": [
-        "channel_id"
-      ]
-    },
     "feed": {
       "properties": {
         "id": {
