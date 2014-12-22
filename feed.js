@@ -113,26 +113,23 @@ Feed.prototype.setup = function(channel, accountInfo, next) {
   log = $resource.log,
   modelName = this.$resource.getDataSourceName('feed');
 
-  (function(channel, accountInfo, next) {
-    var feedStruct = {
-      owner_id : channel.owner_id,
-      channel_id : channel.id,
-      last_update : $resource.helper.nowUTCSeconds(),
-      last_build : $resource.helper.nowUTCSeconds()
+  var feedStruct = {
+    owner_id : channel.owner_id,
+    channel_id : channel.id,
+    last_update : $resource.helper.nowUTCMS(),
+    last_build : $resource.helper.nowUTCMS()
+  }
+
+  model = dao.modelFactory(modelName, feedStruct, accountInfo);
+  dao.create(model, function(err, result) {
+    if (err) {
+      log(err, channel, 'error');
     }
+    next(err, 'channel', channel);
 
-    model = dao.modelFactory(modelName, feedStruct, accountInfo);
-    dao.create(model, function(err, result) {
-      if (err) {
-        log(err, channel, 'error');
-      }
-      next(err, 'channel', channel);
+  }, accountInfo);
 
-    }, accountInfo);
-
-    self.pod.getCDNDir(channel, 'feed');
-
-  })(channel, accountInfo, next);
+  self.pod.getCDNDir(channel, 'feed');
 }
 
 /**
@@ -250,7 +247,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
               id : result.id
             },
             {
-              last_update : $resource.helper.nowUTCSeconds()
+              last_update : $resource.helper.nowUTCMS()
             }
             );
 
@@ -259,7 +256,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           var createTime = moment(imports.created_time).unix();
 
           if (isNaN(createTime)) {
-            createTime = Math.floor($resource.helper.nowUTCSeconds() / 1000);
+            createTime = $resource.helper.nowUTCSeconds();
           }
 
           var parser = new htmlparser.Parser({
@@ -597,7 +594,7 @@ Feed.prototype._removeByFilter = function(channel, entityFilter, res) {
                 id : feedMeta[0].id
               },
               {
-                last_build : $resource.helper.nowUTCSeconds()
+                last_build : $resource.helper.nowUTCMS()
               }
               );
             res.send({
