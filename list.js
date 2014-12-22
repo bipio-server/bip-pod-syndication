@@ -67,22 +67,26 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
 
     if ('get' === method) {
         var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt";
-
-        res.contentType(self.getRPCs('get').contentType);
+        res.contentType(self.pod.getActionRPCs('list', 'get').contentType);
 
         if (channel.config.header) {
             var stream = new Stream();
             stream.on('data', function(data) {
-              res.write(data) // change process.stdout to ya-csv
+              res.write(data)
             });
 
             stream.emit('data', channel.config.header + '\n');
         }
 
         try {
-            $resource.file.get(fileName, function(err, file, fStream){
-                fStream.pipe(res);
-            });
+            $resource.file.get(
+                fileName,
+                {
+                    persist : true
+                },
+                function(err, file, fStream){
+                    fStream.pipe(res);
+                });
         } catch (e) {
             log(e.message, channel, 'error');
             res.send(500);
@@ -111,10 +115,11 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
             fileName,
             new Buffer(imports.line_item + "\n"),
             {
+                persist : true,
                 append: (mode === 'appendFile'),
                 write: (mode === 'writeFile')
             },
-            function(err, struct1) {
+            function(err, fileStruct) {
                 if (err) {
                     next(err);
                 } else {
@@ -130,12 +135,21 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                             config.export_file_name = 'list_' + channel.id + '.txt';
                         }
 
-                        $resource.file.save(self.pod.getDataDir(channel, 'request') + config.export_file_name, file.localpath, { header: channel.config.header }, function(err, struct2) {
-                            if (err) next(err);
-                            contentParts._files.push(struct2);
-                            next( false, exports, contentParts, struct2.size );
-                        });
+                        $resource.file.save(
+                            self.pod.getDataDir(channel, 'request') + config.export_file_name,
+                            fileStruct.localpath,
+                            {
+                                header: channel.config.header
+                            },
+                            function(err, fileStruct) {
+                                if (err) {
+                                    next(err);
+                                } else {
+                                    contentParts._files.push(fileStruct);
+                                }
 
+                                next( false, exports, contentParts, fileStruct.size );
+                            });
                     } else {
                         next(err, exports);
                     }
