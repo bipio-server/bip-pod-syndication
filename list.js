@@ -37,7 +37,7 @@ List.prototype._getListFile = function(channel, next) {
 
 List.prototype.setup = function(channel, accountInfo, next) {
     var $resource = this.$resource,
-        fileName = this.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+        fileName = this.pod.getDataDir(channel, 'list') + channel.id + ".txt";
     // touch the  source file
     $resource.file.save(
         fileName,
@@ -54,7 +54,7 @@ List.prototype.teardown = function(channel, accountInfo, next) {
     next(false);
     return;
     // drop list file
-    var fileName = this.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+    var fileName = this.pod.getDataDir(channel, 'list') + channel.id + ".txt";
     this.$resource.file.remove(fileName, { persist : true }, next);
 }
 
@@ -66,7 +66,7 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
         log = $resource.log;
 
     if ('get' === method) {
-        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt";
+        var fileName = self.pod.getDataDir(channel, 'list') + channel.id + ".txt";
         res.contentType(self.pod.getActionRPCs('list', 'get').contentType);
 
         if (channel.config.header) {
@@ -107,7 +107,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
     if (imports.line_item) {
 
-        var fileName = self.pod.getDataDir(channel, 'request') + channel.id + ".txt",
+        var fileName = self.pod.getDataDir(channel, 'list') + channel.id + ".txt",
         config = channel.config,
         mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
@@ -136,7 +136,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                         }
 
                         $resource.file.save(
-                            self.pod.getDataDir(channel, 'request') + config.export_file_name,
+                            self.pod.getDataDir(channel, 'list') + config.export_file_name,
                             fileStruct.localpath,
                             {
                                 header: channel.config.header
