@@ -50,30 +50,29 @@ Subscribe.prototype.expireTracker = function() {
 }
 
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
-  var $resource = this.$resource,
-  self = this,
-  podConfig = this.
-  dao = $resource.dao,
-  log = $resource.log;
+  var self = this,
+    $resource = this.$resource,
+    dao = $resource.dao;
 
   try {
     request(channel.config.url)
     .pipe(new FeedParser())
     .on('error', function(error) {
-      log(error, channel, 'error');
       next(error, 'channel', channel);
     })
     .on('meta', function (meta) {
       // auto discover description
       var updateCols = {}, newName;
 
-      if (meta.title && channel.name === self.description) {
+      if (meta.title && channel.name === self.schema.title) {
         newName = meta.title.substring(0, 64);
         updateCols.name = newName;
         channel.name = newName;
       }
 
-      if ( (!channel.note || '' === channel.note) && (meta.description && '' !== meta.description )) {
+      if ((!channel.note || '' === channel.note || self.schema.description === channel.note)
+        && (meta.description && '' !== meta.description )) {
+
         updateCols.note = meta.description;
         channel.note = updateCols.note;
       }
@@ -135,7 +134,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   var $resource = this.$resource,
   self = this,
   dao = $resource.dao,
-  log = $resource.log,
+//  log = $resource.log,
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta,
   url = $resource.helper.naturalize(channel.config.url);
@@ -168,10 +167,10 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
 
       next(false, exports);
     }
-  })
-  .on('end', function() {
-    log(channel.config.url + ' retr finished', channel);
   });
+//  .on('end', function() {
+//    log(channel.config.url + ' retr finished', channel);
+//  });
 }
 
 // -----------------------------------------------------------------------------
