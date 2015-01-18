@@ -120,7 +120,7 @@ Subscribe.prototype.trigger = function(imports, channel, sysImports, contentPart
       next(err);
     } else {
       $resource.dupFilter(exports, 'guid', channel, sysImports, function(err, entity) {
-        next(err, addr);
+        next(err, entity);
       });
     }
   });
