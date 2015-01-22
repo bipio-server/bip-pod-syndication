@@ -119,7 +119,8 @@ Subscribe.prototype.trigger = function(imports, channel, sysImports, contentPart
     if (err) {
       next(err);
     } else {
-      $resource.dupFilter(exports, 'guid', channel, sysImports, function(err, entity) {
+      // RSS is guid, ATOM is id
+      $resource.dupFilter(exports, exports.guid ? 'guid' : 'id', channel, sysImports, function(err, entity) {
         next(err, entity);
       });
     }
