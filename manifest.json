@@ -485,5 +485,9 @@
         "id"
       ]
     }
-  }
+  },
+  "tags": [
+    "rss",
+    "syndication"
+  ]
 }
