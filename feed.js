@@ -433,10 +433,12 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             var payload;
             if ('rss' === method) {
               feed = new RSSFeed(struct.meta);
-              for (var i = 0; i < results.data.length; i++) {
-                results.data[i].guid = results.data[i].id;
-                results.data[i].categories = [ results.data[i].category ];
-                feed.item(results.data[i]);
+              if (results && results.data) {
+                for (var i = 0; i < results.data.length; i++) {
+                  results.data[i].guid = results.data[i].id;
+                  results.data[i].categories = [ results.data[i].category ];
+                  feed.item(results.data[i]);
+                }
               }
               payload = feed.xml();
 
@@ -468,7 +470,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
 
             res.contentType(self.pod.getActionRPC(self.name, method).contentType);
-            res.send(payload);
+            res.status(200).send(payload);
           }
         });
     })(method, channel, req, res);
