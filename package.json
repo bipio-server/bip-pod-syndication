@@ -1,6 +1,6 @@
 {
   "name": "bip-pod-syndication",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "author": "Michael Pearson",
   "description": "Syndication Pod for Bipio",
   "keywords": [
@@ -35,8 +35,7 @@
     "pkginfo": "0.2.x",
     "request": ">= 2.2.9",
     "rss": ">=0.2.1",
-    "send": "^0.9.2",
-    "validator": "1.5.1"
+    "send": "^0.9.2"
   },
   "engines": {
     "node": ">= 0.10.0"
