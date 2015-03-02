@@ -185,12 +185,10 @@ Feed.prototype.teardown = function(channel, accountInfo, next) {
 Feed.prototype._pushImageCDN = function(channel, srcUrl, next) {
   var $resource = this.$resource;
 
-  this.pod.getCDNDir(channel, 'feed', function(err, path) {
-    if (!err) {
-      var dstFile = path + $resource.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
-      $resource._httpStreamToFile(srcUrl, dstFile, next);
-    }
-  });
+  var path = this.pod.getCDNDir(channel, 'feed','img');
+
+  var dstFile = path + $resource.helper.strHash(srcUrl) + '.' + (srcUrl.split('.').pop());
+  $resource._httpStreamToFile(srcUrl, dstFile, next, {'persist':true});
 }
 
 Feed.prototype._createFeedEntity = function(entityStruct, channel, next) {
@@ -318,6 +316,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
   })(imports, channel, sysImports, next);
 }
+
 
 Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
   var $resource = this.$resource,
