@@ -18,25 +18,25 @@
         "properties": {
           "write_mode": {
             "type": "string",
-            "description": "Write Mode",
             "oneOf": [
               {
                 "$ref": "#/config/definitions/write_mode"
               }
-            ]
+            ],
+            "title": "Write Mode"
           },
           "export_file": {
             "type": "boolean",
-            "description": "Export File",
-            "default": false
+            "default": false,
+            "title": "Export File"
           },
           "export_file_name": {
             "type": "string",
-            "description": "Exported File Name"
+            "title": "Exported File Name"
           },
           "header": {
             "type": "string",
-            "description": "File Header"
+            "title": "File Header"
           }
         },
         "definitions": {
@@ -64,7 +64,7 @@
         "properties": {
           "line_item": {
             "type": "string",
-            "description": "Line Item"
+            "title": "Line Item"
           }
         }
       },
@@ -72,11 +72,11 @@
         "properties": {
           "line_item": {
             "type": "string",
-            "description": "Line Item"
+            "title": "Line Item"
           },
           "export_file_name": {
             "type": "string",
-            "description": "Exported File Name"
+            "title": "Exported File Name"
           }
         },
         "required": [
@@ -102,24 +102,24 @@
         "properties": {
           "twitter_handle": {
             "type": "string",
-            "description": "Twitter Handle (Blog Renderer)"
+            "title": "Twitter Handle (Blog Renderer)"
           },
           "github_handle": {
             "type": "string",
-            "description": "Github Username (Blog Renderer)"
+            "title": "Github Username (Blog Renderer)"
           },
           "dribble_handle": {
             "type": "string",
-            "description": "Dribble Username (Blog Renderer)"
+            "title": "Dribble Username (Blog Renderer)"
           },
           "purge_after": {
             "type": "string",
-            "description": "Purge after (n) days,weeks,months",
             "oneOf": [
               {
                 "$ref": "#/config/definitions/purge_after"
               }
-            ]
+            ],
+            "title": "Purge after (n) days,weeks,months"
           }
         },
         "definitions": {
@@ -150,39 +150,39 @@
         "properties": {
           "title": {
             "type": "string",
-            "description": "Title"
+            "title": "Title"
           },
           "description": {
             "type": "text",
-            "description": "Description"
+            "title": "Description"
           },
           "summary": {
             "type": "text",
-            "description": "Article Summary"
+            "title": "Article Summary"
           },
           "url": {
             "type": "string",
-            "description": "Source URL"
+            "title": "Source URL"
           },
           "created_time": {
             "type": "string",
-            "description": "UTC Created Time"
+            "title": "UTC Created Time"
           },
           "author": {
             "type": "string",
-            "description": "Author"
+            "title": "Author"
           },
           "image": {
             "type": "string",
-            "description": "Image"
+            "title": "Image"
           },
           "icon": {
             "type": "string",
-            "description": "Source Icon"
+            "title": "Source Icon"
           },
           "category": {
             "type": "string",
-            "description": "Category Name"
+            "title": "Category Name"
           }
         },
         "disposition": [
@@ -249,12 +249,12 @@
             "type": "string",
             "optional": false,
             "unique": true,
-            "description": "Feed URL"
+            "title": "Feed URL"
           },
           "icon": {
             "type": "string",
             "optional": true,
-            "description": "Icon URL"
+            "title": "Icon URL"
           }
         },
         "required": [
@@ -269,43 +269,43 @@
         "properties": {
           "guid": {
             "type": "string",
-            "description": "GUID"
+            "title": "GUID"
           },
           "title": {
             "type": "string",
-            "description": "Title"
+            "title": "Title"
           },
           "description": {
             "type": "string",
-            "description": "Description"
+            "title": "Description"
           },
           "summary": {
             "type": "string",
-            "description": "Article Summary"
+            "title": "Article Summary"
           },
           "link": {
             "type": "string",
-            "description": "Link"
+            "title": "Link"
           },
           "date": {
             "type": "string",
-            "description": "Date"
+            "title": "Date"
           },
           "pubdate": {
             "type": "string",
-            "description": "Published Date"
+            "title": "Published Date"
           },
           "author": {
             "type": "string",
-            "description": "Author"
+            "title": "Author"
           },
           "image": {
             "type": "string",
-            "description": "Image"
+            "title": "Image"
           },
           "icon": {
             "type": "string",
-            "description": "Source Icon"
+            "title": "Source Icon"
           }
         }
       },
