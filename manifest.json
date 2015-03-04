@@ -95,8 +95,8 @@
       }
     },
     "feed": {
-      "title": "Add To A Feed",
-      "description": "Add An Article To Your Own Syndication",
+      "title": "Create A Feed",
+      "description": "Add Articles To Your Own Syndication",
       "trigger": "invoke",
       "config": {
         "properties": {
@@ -116,18 +116,18 @@
             "description" : "Used By The Blog RPC"
           },
           "purge_after": {
+            "title": "Expire After",
             "type": "string",
             "oneOf": [
               {
                 "$ref": "#/config/definitions/purge_after"
               }
-            ],
-            "title": "Purge after (n) days,weeks,months"
+            ]
           }
         },
         "definitions": {
           "purge_after": {
-            "description": "Purge Content",
+            "description": "Expire After",
             "enum": [
               "never",
               "30d"
@@ -243,8 +243,8 @@
       }
     },
     "subscribe": {
-      "title": "Subscribe to a Feed",
-      "description": "Subscribes to an RSS/ATOM/RDF Feed",
+      "title": "Subscribe To A Feed",
+      "description": "Subscribes To An RSS/ATOM/RDF Feed",
       "trigger": "poll",
       "config": {
         "properties": {
