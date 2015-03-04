@@ -95,22 +95,25 @@
       }
     },
     "feed": {
-      "title": "Create A Feed",
-      "description": "Creates an syndication from content you receive from Bips",
+      "title": "Add To A Feed",
+      "description": "Add An Article To Your Own Syndication",
       "trigger": "invoke",
       "config": {
         "properties": {
           "twitter_handle": {
             "type": "string",
-            "title": "Twitter Handle (Blog Renderer)"
+            "title": "Twitter Handle",
+            "description" : "Used By The Blog RPC"
           },
           "github_handle": {
             "type": "string",
-            "title": "Github Username (Blog Renderer)"
+            "title": "Github Username",
+            "description" : "Used By The Blog RPC"
           },
           "dribble_handle": {
             "type": "string",
-            "title": "Dribble Username (Blog Renderer)"
+            "title": "Dribble Username",
+            "description" : "Used By The Blog RPC"
           },
           "purge_after": {
             "type": "string",
@@ -249,7 +252,8 @@
             "type": "string",
             "optional": false,
             "unique": true,
-            "title": "Feed URL"
+            "title": "Feed URL",
+            "description" : "eg: https://news.ycombinator.com/rss"
           },
           "icon": {
             "type": "string",
