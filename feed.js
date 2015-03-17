@@ -287,31 +287,37 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
 
           // if we have an image, push it into cdn
           if (imports.image) {
-            self._pushImageCDN(channel, imports.image, function(err, struct) {
-              var cdnURI, cdnRegExp;
+            var path = self.pod.getCDNDir(channel, 'feed','img'),
+              dstFile = path + $resource.helper.strHash(imports.image) + '.' + (imports.image.split('.').pop()),
+              closure = function(err, struct) {
+                var cdnURI, cdnRegExp;
+                if (!err) {
+                  if (struct.localpath) {
+                    cdnRegExp = new RegExp('.*' + self.pod.getCDNBaseDir().replace('/', '\\/'));
 
-              if (!err) {
-                if (struct.localpath) {
-                  cdnRegExp = new RegExp('.*' + self.pod.getCDNBaseDir().replace('/', '\\/'));
+                    cdnURI = struct.localpath.replace(cdnRegExp, '');
+                    entityStruct.image = cdnURI;
+                    imagemagick.identify(struct.localpath, function(err, features) {
+                      if (err) {
+                        next(err);
+                      } else {
+                        entityStruct.image_dim = {
+                          width : features.width,
+                          height : features.height,
+                          format : features.format
+                        };
 
-                  cdnURI = struct.localpath.replace(cdnRegExp, '');
-                  entityStruct.image = cdnURI;
-                  imagemagick.identify(struct.localpath, function(err, features) {
-                    if (err) {
-                      next(err);
-                    } else {
-                      entityStruct.image_dim = {
-                        width : features.width,
-                        height : features.height,
-                        format : features.format
-                      };
-                      self._createFeedEntity(entityStruct, channel, next);
-                    }
-                  });
+                        self._createFeedEntity(entityStruct, channel, next);
+                      }
+                    });
+                  }
                 }
-              }
-            });
+              };
+
+            $resource._httpStreamToFile(imports.image, dstFile, closure, { 'persist' : true } );
+
           } else {
+
             self._createFeedEntity(entityStruct, channel, next);
           }
         }
@@ -501,7 +507,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
         var tplVars = {
           blogName : channel.name,
           avatar : CFG.website_public + user.settings.avatar,
-          name : user.username,
+          name : user.name,
           rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
           twitterImage : channel.config.twitter_handle ? '<a href="https://twitter.com/' + channel.config.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           githubImage : channel.config.github_handle ? '<a href="https://github.com/' + channel.config.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
@@ -522,7 +528,11 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             } else {
               tplVars.articles = results;
               if (results && results.data) {
+
                 for (var i = 0; i < results.data.length; i++) {
+
+                  results.data[i] = $resource.helper.naturalize(results.data[i], true);
+
                   if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
                     firstImage = false;
                     var parser = new htmlparser.Parser({
