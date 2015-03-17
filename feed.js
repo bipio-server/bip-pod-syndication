@@ -289,20 +289,24 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           if (imports.image) {
             self._pushImageCDN(channel, imports.image, function(err, struct) {
               var cdnURI, cdnRegExp;
+
               if (!err) {
-                if (struct.file) {
-                  cdnRegExp = new RegExp('.*' + CDN_DIR.replace('/', '\\/'));
-                  cdnURI = struct.file.replace(cdnRegExp, CFG.cdn_public);
+                if (struct.localpath) {
+                  cdnRegExp = new RegExp('.*' + self.pod.getCDNBaseDir().replace('/', '\\/'));
+
+                  cdnURI = struct.localpath.replace(cdnRegExp, '');
                   entityStruct.image = cdnURI;
-
-                  imagemagick.identify(struct.file, function(err, features) {
-                    entityStruct.image_dim = {
-                      width : features.width,
-                      height : features.height,
-                      format : features.format
-                    };
-
-                    self._createFeedEntity(entityStruct, channel, next);
+                  imagemagick.identify(struct.localpath, function(err, features) {
+                    if (err) {
+                      next(err);
+                    } else {
+                      entityStruct.image_dim = {
+                        width : features.width,
+                        height : features.height,
+                        format : features.format
+                      };
+                      self._createFeedEntity(entityStruct, channel, next);
+                    }
                   });
                 }
               }
@@ -384,6 +388,9 @@ Feed.prototype._retr = function(channel, pageSize, page, customFilter, next) {
             } else {
               for (var i = 0; i < feedData.data.length; i++) {
                 feedData.data[i]._channel_id = feedMeta[0].channel_id;
+                if (feedData.data[i].image && 0 === feedData.data[i].image.indexOf('/')) {
+                  feedData.data[i].image = CFG.cdn_public + feedData.data[i].image;
+                }
               }
 
               next(false, feedData);
