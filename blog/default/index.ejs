@@ -155,7 +155,7 @@
           <div class="span1 offset1 middle profile">
             <img src="<%= avatar %>"/>
             <h3><%= name %></h3>
-            <a href="/rss"><%- rssImage %></a><br/>            
+            <a href="<%=path%>/rss"><%- rssImage %></a><br/>             
             <%- (twitterImage ? twitterImage : '') %>
             <%- (githubImage ? githubImage : '') %>            
             <%- (dribbleImage ? dribbleImage : '') %>            
@@ -185,11 +185,11 @@
             </article>
 
             <% if (articles.page > 1) { %>
-              <a class="nav pull-left" href="/page/<%=(articles.page - 1)%>">Previous</a>
+              <a class="nav pull-left" href="<%=path%>/page/<%=(articles.page - 1)%>">Previous</a>
             <% } %>
 
             <% if (articles.page < articles.num_pages) { %>
-              <a class="nav pull-right" href="/page/<%=(articles.page + 1)%>">Next</a>
+              <a class="nav pull-right" href="<%=path%>/page/<%=(articles.page + 1)%>">Next</a>
             <% } %>           
           </div>
         </div>

@@ -413,6 +413,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   dao = $resource.dao,
   log = $resource.log;
 
+ 
   // @todo - cache compiled feed to disk
   if ('rss' === method || 'json' === method) {
     (function(method, channel, req, res) {
@@ -438,6 +439,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 author : req.remoteUser.getName()
               }
             };
+
             var renderOpts = {
               content_type : self.pod.getActionRPC(self.name, method).contentType
             };
@@ -489,10 +491,16 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   }
   else if ('blog' === method) {
     var user = req.remoteUser.user,
-    tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
-    page = tokens[2];
-
-    if (tokens[1] === 'page' && page) {
+//   
+//    tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
+//    page = tokens[2];
+    page=req.params.extra_params_value,
+    extraParam=req.params.extra_params;
+    if(extraParam == undefined ){
+    	extraParam="page";
+    	page=1;
+    }
+    if (extraParam === 'page' && page) {
       var indexFile = __dirname + '/blog/default/index.ejs';
       fs.readFile(indexFile, 'utf8', function(err, file) {
         if(err) {
@@ -512,7 +520,8 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           twitterImage : channel.config.twitter_handle ? '<a href="https://twitter.com/' + channel.config.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           githubImage : channel.config.github_handle ? '<a href="https://github.com/' + channel.config.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           dribbleImage : channel.config.dribble_handle ? '<a href="http://dribble.com/' + channel.config.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          moment : moment
+          moment : moment,
+          path:"/rpc/channel/"+req.params.channel_id+"/blog"
         };
 
         var firstImage = false;
@@ -555,7 +564,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
             }
           })
       });
-    } else if (tokens[1] === 'rss') {
+    } else if (extraParam === 'rss') {
       this.rpc('rss', sysImports, options, channel, req, res);
     } else {
       res.send(404);
