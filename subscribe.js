@@ -97,7 +97,11 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
               },
               function(err, struct) {
                 if (!err) {
-                  $resource.dao.updateChannelIcon(channel, $resource.getCDNURL() + '/' + icoPath);
+                  $resource.dao.updateChannelIcon(
+                    channel,
+                    $resource.getCDNURL().replace('/' + self.pod.options.cdnBasePath , '')
+                      + '/' + icoPath
+                  );
                 }
               });
           }
