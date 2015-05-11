@@ -52,18 +52,64 @@ Subscribe.prototype.expireTracker = function() {
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
   var self = this,
     $resource = this.$resource,
-    dao = $resource.dao;
+    dao = $resource.dao,feedURL='';
 
   try {
-    request(channel.config.url)
-    .pipe(new FeedParser())
-    .on('error', function(error) {
-      next(error, 'channel', channel);
-    })
-    .on('meta', function (meta) {
-      // auto discover description
-      var updateCols = {}, newName;
+  	  feedURL=channel.config.url;
+      request(feedURL)
+      .pipe(new FeedParser())
+      .on('error', function(error) {
+        next(error, 'channel', channel);
+      })
+      .on('meta', function (meta) {
+        // auto discover description
+        var updateCols = {}, newName,hubURL="";
+  	  if(meta["atom:link"]){
+  		  for(var i=0;i<meta["atom:link"].length ;i++){
+  			 if(meta["atom:link"][i]["@"]["rel"] && meta["atom:link"][i]["@"]["rel"] == 'hub'){
+  				 hubURL=meta["atom:link"][i]["@"]["href"];
+  				  $resource.dao.createBip({
+  			          type : 'http',
+  			          note : 'PuSH Callback for ' + meta.title + ' RSS',
+  			          app_id : 'syndication.subscribe',
+  			          end_life : {
+  			        	  time : 0,
+  			              imp : 0
+  			          },
+  			          hub : {
+  			            source : {
+  			              edges : []
+  			            }
+  			          },
+  			          config : {
+  			            auth : 'none',
+  			          }
+  			        },
+  			        accountInfo,
+  			        function(err, modelName, bip) {
+  			          if (!err) {
+  			        	  request({
+  			        		    url: hubURL, //URL to hit
+  			        		    qs: {from:'bipio', time: +new Date()},  //Query string data
+  			        		    method: 'POST',
+  			        		    form:{ 'hub.mode': 'subscribe','hub.topic':feedURL,'hub.callback':bip._repr,'hub.verify':'sync' }
+  			        		}, function(error, response, body){
+  			        		    if(error) {
+  			        		        console.log("Error "+error);
+  			        		    } else {
+  			        		        console.log(response.statusCode, body);
 
+  			        		    }
+  			        		});
+  			          }else{
+  			        	  console.log("err"+err);
+  			          }
+  			        });
+  			  }
+  		  }
+  	  }
+
+  	  
       if (meta.title && channel.name === self.schema.title) {
         newName = meta.title.substring(0, 64);
         updateCols.name = newName;
