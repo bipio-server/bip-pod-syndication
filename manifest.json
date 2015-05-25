@@ -312,9 +312,23 @@
             "title": "Source Icon"
           }
         }
+        ,
+        "disposition": [
+       		"guid",
+       		"title",
+       		"description",
+       		"summary",
+       		"link",
+       		"date",
+       		"pubdate",
+       		"author",
+       		"image",
+       		"icon"
+       		]
       },
       "imports": {
-        "properties": {}
+        "properties": {},
+        "disposition": []
       }
     }
   },
