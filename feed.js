@@ -88,7 +88,7 @@ Feed.prototype.expireFeeds = function() {
                         });
                       }
 
-                      self.pod.expireCDNDir(channel, self._name, channel.config.purge_after);
+                      self.pod.expireCDNDir(channel, self._name, imports.purge_after);
                     }
                   }
                 }
@@ -434,7 +434,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 title: channel.name || req.remoteUser.user.name + ' Aggregate',
                 feed_url : channel.getRendererUrl(method, req.remoteUser), // self renderer
                 site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                image : channel.config && channel.config.image ? channel.config.image : '', // channel config icon image
+                image : imports && imports.image ? imports.image : '', // channel config icon image
                 description: channel.note || 'All Feeds',
                 author : req.remoteUser.getName()
               }
@@ -517,9 +517,9 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           avatar : CFG.website_public + user.settings.avatar,
           name : user.name,
           rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
-          twitterImage : channel.config.twitter_handle ? '<a href="https://twitter.com/' + channel.config.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          githubImage : channel.config.github_handle ? '<a href="https://github.com/' + channel.config.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          dribbleImage : channel.config.dribble_handle ? '<a href="http://dribble.com/' + channel.config.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          twitterImage : imports.twitter_handle ? '<a href="https://twitter.com/' + imports.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          githubImage : imports.github_handle ? '<a href="https://github.com/' + imports.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
+          dribbleImage : imports.dribble_handle ? '<a href="http://dribble.com/' + imports.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           moment : moment,
           path:"/rpc/channel/"+req.params.channel_id+"/blog"
         };

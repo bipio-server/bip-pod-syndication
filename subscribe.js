@@ -55,7 +55,7 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
     dao = $resource.dao,feedURL='';
 
   try {
-  	  feedURL=channel.config.url;
+  	  feedURL = channel.config.url;
       request(feedURL)
       .pipe(new FeedParser())
       .on('error', function(error) {
@@ -64,11 +64,12 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
       .on('meta', function (meta) {
         // auto discover description
         var updateCols = {}, newName,hubURL="";
-  	  if(meta["atom:link"]){
-  		  for(var i=0;i<meta["atom:link"].length ;i++){
-  			 if(meta["atom:link"][i]["@"]["rel"] && meta["atom:link"][i]["@"]["rel"] == 'hub'){
-  				 hubURL=meta["atom:link"][i]["@"]["href"];
-  				  $resource.dao.createBip({
+    	  if(meta["atom:link"]) {
+    		  for(var i=0;i<meta["atom:link"].length ;i++){
+    			  if(meta["atom:link"][i]["@"]["rel"] && meta["atom:link"][i]["@"]["rel"] == 'hub') {
+    				  hubURL = meta["atom:link"][i]["@"]["href"];
+    				  $resource.dao.createBip(
+                {
   			          type : 'http',
   			          note : 'PuSH Callback for ' + meta.title + ' RSS',
   			          app_id : 'syndication.subscribe',
@@ -90,26 +91,34 @@ Subscribe.prototype.setup = function(channel, accountInfo, next) {
   			          if (!err) {
   			        	  request({
   			        		    url: hubURL, //URL to hit
-  			        		    qs: {from:'bipio', time: +new Date()},  //Query string data
+  			        		    qs: {
+                          from:'bipio',
+                          time: +new Date()
+                        },  //Query string data
   			        		    method: 'POST',
-  			        		    form:{ 'hub.mode': 'subscribe','hub.topic':feedURL,'hub.callback':bip._repr,'hub.verify':'sync' }
+  			        		    form : {
+                          'hub.mode': 'subscribe',
+                          'hub.topic':feedURL,
+                          'hub.callback':bip._repr,
+                          'hub.verify':'sync'
+                        }
   			        		}, function(error, response, body){
-  			        		    if(error) {
-  			        		        console.log("Error "+error);
-  			        		    } else {
-  			        		        console.log(response.statusCode, body);
-
-  			        		    }
+  		        		    if(error) {
+                        next(error);
+  		        		        console.log("Error "+error);
+  		        		    } else {
+                        next();
+  		        		    }
   			        		});
-  			          }else{
-  			        	  console.log("err"+err);
+  			          } else {
+                    next(err);
   			          }
-  			        });
-  			  }
-  		  }
-  	  }
+  			        }
+              );
+    			  }
+    		  }
+    	  }
 
-  	  
       if (meta.title && channel.name === self.schema.title) {
         newName = meta.title.substring(0, 64);
         updateCols.name = newName;
@@ -188,7 +197,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
 //  log = $resource.log,
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta,
-  url = $resource.helper.naturalize(channel.config.url);
+  url = $resource.helper.naturalize(imports.url);
 
   if (!/^http(s?)/.test(url)) {
     next(url + ' - bad protocol');
@@ -213,14 +222,14 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
         pubdate : chunk.pubdate,
         author : chunk.author,
         image : chunk.image.url || '',
-        icon : channel.config.icon
+        icon : imports.icon
       };
 
       next(false, exports);
     }
   });
 //  .on('end', function() {
-//    log(channel.config.url + ' retr finished', channel);
+//    log(imports.url + ' retr finished', channel);
 //  });
 }
 

@@ -250,14 +250,11 @@
         "properties": {
           "url": {
             "type": "string",
-            "optional": false,
-            "unique": true,
             "title": "Feed URL",
             "description" : "eg: https://news.ycombinator.com/rss"
           },
           "icon": {
             "type": "string",
-            "optional": true,
             "title": "Icon URL"
           }
         },

@@ -108,7 +108,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
     if (imports.line_item) {
 
         var fileName = self.pod.getDataDir(channel, 'list') + channel.id + ".txt",
-        config = channel.config,
+        config = imports,
         mode = config.write_mode === 'append' ? 'appendFile' : 'writeFile';
 
         $resource.file.save(
@@ -139,7 +139,7 @@ List.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
                             self.pod.getDataDir(channel, 'list') + config.export_file_name,
                             fileStruct.localpath,
                             {
-                                header: channel.config.header
+                                header: imports.header
                             },
                             function(err, fileStruct) {
                                 if (err) {
