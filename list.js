@@ -68,7 +68,6 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
     if ('get' === method) {
         var fileName = self.pod.getDataDir(channel, 'list') + channel.id + ".txt";
         res.contentType(self.pod.getActionRPCs('list', 'get').contentType);
-
         if (channel.config.header) {
             var stream = new Stream();
             stream.on('data', function(data) {
@@ -85,14 +84,18 @@ List.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                     persist : true
                 },
                 function(err, file, fStream){
-                    fStream.pipe(res);
+                    if (err) {
+                        res.status(500).end();
+                    } else {
+                        fStream.pipe(res);
+                    }
                 });
         } catch (e) {
             log(e.message, channel, 'error');
-            res.send(500);
+            res.status(500).end();
         }
     } else {
-        res.send(404);
+        res.status(404).end();
     }
 };
 
