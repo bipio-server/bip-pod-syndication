@@ -100,21 +100,6 @@
       "trigger": "invoke",
       "config": {
         "properties": {
-          "twitter_handle": {
-            "type": "string",
-            "title": "Twitter Handle",
-            "description" : "Used By The Blog RPC"
-          },
-          "github_handle": {
-            "type": "string",
-            "title": "Github Username",
-            "description" : "Used By The Blog RPC"
-          },
-          "dribble_handle": {
-            "type": "string",
-            "title": "Dribble Username",
-            "description" : "Used By The Blog RPC"
-          },
           "purge_after": {
             "title": "Expire After",
             "type": "string",
@@ -140,9 +125,6 @@
           }
         },
         "disposition": [
-          "twitter_handle",
-          "github_handle",
-          "dribble_handle",
           "purge_after"
         ]
       },
