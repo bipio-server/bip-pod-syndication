@@ -482,7 +482,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 }
               }
             }
-console.log(payload);
+
             res.contentType(self.pod.getActionRPC(self.name, method).contentType);
             res.status(200).send(payload);
           }
