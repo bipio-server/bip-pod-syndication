@@ -94,7 +94,7 @@
       .timeline-action .content {
         font-size: 14px;
       }
-    
+
       body {
         background: #edf0eb;
         height: 400px;
@@ -142,7 +142,7 @@
         text-align: center;
       }
 
-      .profile a img {        
+      .profile a img {
         margin-bottom: 10px;
       }
 
@@ -155,10 +155,7 @@
           <div class="span1 offset1 middle profile">
             <img src="<%= avatar %>"/>
             <h3><%= name %></h3>
-            <a href="<%=path%>/rss"><%- rssImage %></a><br/>             
-            <%- (twitterImage ? twitterImage : '') %>
-            <%- (githubImage ? githubImage : '') %>            
-            <%- (dribbleImage ? dribbleImage : '') %>            
+            <a href="<%=path%>/rss"><%- rssImage %></a><br/>
           </div>
           <div class="span9">
             <article class="page">
@@ -190,7 +187,7 @@
 
             <% if (articles.page < articles.num_pages) { %>
               <a class="nav pull-right" href="<%=path%>/page/<%=(articles.page + 1)%>">Next</a>
-            <% } %>           
+            <% } %>
           </div>
         </div>
       </div>

@@ -413,7 +413,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   dao = $resource.dao,
   log = $resource.log;
 
- 
+
   // @todo - cache compiled feed to disk
   if ('rss' === method || 'json' === method) {
     (function(method, channel, req, res) {
@@ -434,7 +434,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 title: channel.name || req.remoteUser.user.name + ' Aggregate',
                 feed_url : channel.getRendererUrl(method, req.remoteUser), // self renderer
                 site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                image : imports && imports.image ? imports.image : '', // channel config icon image
+                image : channel && channel.image ? channel.image : '', // channel config icon image
                 description: channel.note || 'All Feeds',
                 author : req.remoteUser.getName()
               }
@@ -482,7 +482,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
                 }
               }
             }
-
+console.log(payload);
             res.contentType(self.pod.getActionRPC(self.name, method).contentType);
             res.status(200).send(payload);
           }
@@ -491,7 +491,7 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
   }
   else if ('blog' === method) {
     var user = req.remoteUser.user,
-//   
+//
 //    tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
 //    page = tokens[2];
     page=req.params.extra_params_value,
@@ -517,9 +517,6 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           avatar : CFG.website_public + user.settings.avatar,
           name : user.name,
           rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
-          twitterImage : imports.twitter_handle ? '<a href="https://twitter.com/' + imports.twitter_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/twitter.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          githubImage : imports.github_handle ? '<a href="https://github.com/' + imports.github_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/github.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
-          dribbleImage : imports.dribble_handle ? '<a href="http://dribble.com/' + imports.dribble_handle + '"><img src="' + CFG.website_public + '/static/img/channels/32/color/dribble.png" alt="" class="hub-icon hub-icon-24"></a><br/>' : '',
           moment : moment,
           path:"/rpc/channel/"+req.params.channel_id+"/blog"
         };
