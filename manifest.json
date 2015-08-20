@@ -201,6 +201,7 @@
         "remove_by_bip": {
           "description": "Removes a feed entity by its originating Bip ID",
           "contentType": "application/json",
+          "method" : "DELETE",
           "properties": {
             "id": {
               "type": "string",
@@ -213,6 +214,7 @@
         "remove_entity": {
           "description": "Removes a feed entity by its GUID",
           "contentType": "application/json",
+          "method" : "DELETE",
           "properties": {
             "guid": {
               "type": "string",

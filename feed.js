@@ -88,7 +88,7 @@ Feed.prototype.expireFeeds = function() {
                         });
                       }
 
-                      self.pod.expireCDNDir(channel, self._name, imports.purge_after);
+                      self.pod.expireCDNDir(channel, self._name, channel.config.purge_after);
                     }
                   }
                 }
