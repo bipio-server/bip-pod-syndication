@@ -269,6 +269,8 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           parser.write(imports.description);
           parser.end();
 
+          delete parser;
+
           var entityStruct = {
             feed_id : result.id,
             title : imports.title,

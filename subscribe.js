@@ -51,17 +51,23 @@ Subscribe.prototype.expireTracker = function() {
 
 Subscribe.prototype.setup = function(channel, accountInfo, next) {
   var self = this,
+    parser = new FeedParser(),
     $resource = this.$resource,
     dao = $resource.dao,feedURL='';
 
   try {
   	  feedURL = channel.config.url;
       request(feedURL)
-      .pipe(new FeedParser())
+      .pipe(parser)
       .on('error', function(error) {
         next(error, 'channel', channel);
+        delete parser;
+
       })
       .on('meta', function (meta) {
+
+        delete parser;
+
         // auto discover description
         var updateCols = {}, newName,hubURL="";
     	  if(meta["atom:link"]) {
@@ -194,7 +200,6 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
   var $resource = this.$resource,
   self = this,
   dao = $resource.dao,
-//  log = $resource.log,
   modelName = this.$resource.getDataSourceName('track_subscribe'),
   meta,
   url = $resource.helper.naturalize(imports.url);
@@ -204,33 +209,33 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
     return;
   }
 
-  var readable = request(url)
-  .pipe(new FeedParser())
-  .on('error', function(error) {
-    next(error);
-  })
-  .on('readable', function() {
-    var chunk;
-    while (null !== (chunk = readable.read())) {
-      var exports = {
-        guid : chunk.guid,
-        title : chunk.title,
-        description : chunk.description,
-        summary : chunk.summary,
-        link : chunk.link,
-        date : chunk.date,
-        pubdate : chunk.pubdate,
-        author : chunk.author,
-        image : chunk.image.url || '',
-        icon : imports.icon
-      };
+  var parser = new FeedParser(),
+    readable = request(url)
+    .pipe(new FeedParser())
+    .on('error', function(error) {
+      next(error);
+    })
+    .on('readable', function() {
+      var chunk;
+      while (null !== (chunk = readable.read())) {
+        var exports = {
+          guid : chunk.guid,
+          title : chunk.title,
+          description : chunk.description,
+          summary : chunk.summary,
+          link : chunk.link,
+          date : chunk.date,
+          pubdate : chunk.pubdate,
+          author : chunk.author,
+          image : chunk.image.url || '',
+          icon : imports.icon
+        };
 
-      next(false, exports);
-    }
-  });
-//  .on('end', function() {
-//    log(imports.url + ' retr finished', channel);
-//  });
+        next(false, exports);
+
+        delete parser;
+      }
+    });
 }
 
 // -----------------------------------------------------------------------------
