@@ -211,7 +211,7 @@ Subscribe.prototype.invoke = function(imports, channel, sysImports, contentParts
 
   var parser = new FeedParser(),
     readable = request(url)
-    .pipe(new FeedParser())
+    .pipe(parser)
     .on('error', function(error) {
       next(error);
     })
