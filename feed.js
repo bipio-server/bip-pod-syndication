@@ -431,143 +431,152 @@ Feed.prototype.rpc = function(method, sysImports, options, channel, req, res) {
           } else if (!results) {
             res.send(404);
           } else {
-            var struct = {
-              'meta' : {
-                title: channel.name || req.remoteUser.user.name + ' Aggregate',
-                feed_url : channel.getRendererUrl(method, req.remoteUser), // self renderer
-                site_url : req.remoteUser.getDefaultDomainStr(true), // self renderer
-                image : channel && channel.image ? channel.image : '', // channel config icon image
-                description: channel.note || 'All Feeds',
-                author : req.remoteUser.getName()
-              }
-            };
 
-            var renderOpts = {
-              content_type : self.pod.getActionRPC(self.name, method).contentType
-            };
+            req.remoteUser.getDefaultDomainStr(function(err, domainStr) {
 
-            var payload;
-            if ('rss' === method) {
-              feed = new RSSFeed(struct.meta);
-              if (results && results.data) {
-                for (var i = 0; i < results.data.length; i++) {
-                  results.data[i].guid = results.data[i].id;
-                  results.data[i].categories = [ results.data[i].category ];
-                  feed.item(results.data[i]);
+              var struct =
+                {
+                  'meta' : {
+                    title: channel.name || req.remoteUser.getName() + ' Aggregate',
+                    feed_url : channel.getRendererUrl(method, req.remoteUser), // self renderer
+                    site_url : domainStr, // self renderer
+                    image : channel && channel.image ? channel.image : '', // channel config icon image
+                    description: channel.note || 'All Feeds',
+                    author : req.remoteUser.getName()
+                  }
+                },
+                payload,
+                renderOpts = {
+                  content_type : self.pod.getActionRPC(self.name, method).contentType
+                };
+
+              if ('rss' === method) {
+                feed = new RSSFeed(struct.meta);
+                if (results && results.data) {
+                  for (var i = 0; i < results.data.length; i++) {
+                    results.data[i].guid = results.data[i].id;
+                    results.data[i].categories = [ results.data[i].category ];
+                    feed.item(results.data[i]);
+                  }
                 }
-              }
-              payload = feed.xml();
+                payload = feed.xml();
 
-            } else if ('json' === method) {
-              payload = {
-                meta : struct.meta,
-                entities : results
-              }
+              } else if ('json' === method) {
+                payload = {
+                  meta : struct.meta,
+                  entities : results
+                }
 
-              if (results.data) {
-                for (var i = 0; i < results.data.length; i++) {
-                  results.data[i] = {
-                    guid : results.data[i].id,
-                    categories : [ results.data[i].category ],
-                    'title' : results.data[i].title,
-                    'description' : results.data[i].description,
-                    'link' : results.data[i].url,
-                    'icon' : results.data[i].icon,
-                    'image' : results.data[i].image,
-                    'image_dim' : results.data[i].image_dim,
-                    'author' : results.data[i].author,
-                    'created_time' : results.data[i].entity_created,
-                    'feed_id' : results.data[i].feed_id,
-                    '_channel_id' : results.data[i]._channel_id,
-                    'src_bip_id' : results.data[i].src_bip_id
+                if (results.data) {
+                  for (var i = 0; i < results.data.length; i++) {
+                    results.data[i] = {
+                      guid : results.data[i].id,
+                      categories : [ results.data[i].category ],
+                      'title' : results.data[i].title,
+                      'description' : results.data[i].description,
+                      'link' : results.data[i].url,
+                      'icon' : results.data[i].icon,
+                      'image' : results.data[i].image,
+                      'image_dim' : results.data[i].image_dim,
+                      'author' : results.data[i].author,
+                      'created_time' : results.data[i].entity_created,
+                      'feed_id' : results.data[i].feed_id,
+                      '_channel_id' : results.data[i]._channel_id,
+                      'src_bip_id' : results.data[i].src_bip_id
+                    }
                   }
                 }
               }
-            }
 
-            res.contentType(self.pod.getActionRPC(self.name, method).contentType);
-            res.status(200).send(payload);
+              res.contentType(self.pod.getActionRPC(self.name, method).contentType);
+              res.status(200).send(payload);
+
+            });
           }
         });
     })(method, channel, req, res);
   }
   else if ('blog' === method) {
-    var user = req.remoteUser.user,
-//
-//    tokens = req.params[0] ===  '/' ? ['', 'page' , 1] : req.params[0].split('/'),
-//    page = tokens[2];
-    page=req.params.extra_params_value,
-    extraParam=req.params.extra_params;
-    if(extraParam == undefined ){
-    	extraParam="page";
-    	page=1;
-    }
-    if (extraParam === 'page' && page) {
-      var indexFile = __dirname + '/blog/default/index.ejs';
-      fs.readFile(indexFile, 'utf8', function(err, file) {
-        if(err) {
-          res.writeHead(500, {
-            "Content-Type": "text/plain"
-          });
-          res.write(err + "\n");
-          res.end();
-          return;
-        }
+    var user = req.remoteUser;
 
-        var tplVars = {
-          blogName : channel.name,
-          avatar : CFG.website_public + user.settings.avatar,
-          name : user.name,
-          rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
-          moment : moment,
-          path:"/rpc/channel/"+req.params.channel_id+"/blog"
-        };
+    user.getSettings(function(err, settings) {
 
-        var firstImage = false;
+      page = req.params.extra_params_value,
+      extraParam = req.params.extra_params;
+      if (extraParam == undefined ) {
+        extraParam = "page";
+        page = 1;
+      }
 
-        self._retr(
-          channel,
-          10,
-          page,
-          undefined,
-          function(err, results) {
-            if (err) {
-              res.send(500);
-            } else {
-              tplVars.articles = results;
-              if (results && results.data) {
+      if (extraParam === 'page' && page) {
+        var indexFile = __dirname + '/blog/default/index.ejs';
+        fs.readFile(indexFile, 'utf8', function(err, file) {
+          if(err) {
+            res.writeHead(500, {
+              "Content-Type": "text/plain"
+            });
+            res.write(err + "\n");
+            res.end();
+            return;
+          }
 
-                for (var i = 0; i < results.data.length; i++) {
+          var tplVars = {
+            blogName : channel.name,
+            avatar : CFG.website_public + settings.avatar,
+            name : user.getName(),
+            rssImage : '<img src="' + CFG.website_public + '/static/img/channels/32/color/syndication.png" alt="" class="hub-icon hub-icon-24">',
+            moment : moment,
+            path:"/rpc/channel/"+req.params.channel_id+"/blog"
+          };
 
-                  results.data[i] = $resource.helper.naturalize(results.data[i], true);
+          var firstImage = false;
 
-                  if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
-                    firstImage = false;
-                    var parser = new htmlparser.Parser({
-                      onopentag : function(name, attribs) {
-                        if (name === 'img' && !firstImage ) {
-                          results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);
-                          firstImage = true;
+          self._retr(
+            channel,
+            10,
+            page,
+            undefined,
+            function(err, results) {
+              if (err) {
+                res.send(500);
+              } else {
+                tplVars.articles = results;
+                if (results && results.data) {
+
+                  for (var i = 0; i < results.data.length; i++) {
+
+                    results.data[i] = $resource.helper.naturalize(results.data[i], true);
+
+                    if (results.data[i].summary && /<img/.test(results.data[i].summary) ) {
+                      firstImage = false;
+                      var parser = new htmlparser.Parser({
+                        onopentag : function(name, attribs) {
+                          if (name === 'img' && !firstImage ) {
+                            results.data[i].summary = results.data[i].summary.replace(attribs.src, results.data[i].image);
+                            firstImage = true;
+                          }
                         }
-                      }
-                    });
+                      });
 
-                    parser.write(results.data[i].summary);
-                    parser.end();
+                      parser.write(results.data[i].summary);
+                      parser.end();
+                    }
                   }
                 }
+                res.writeHead(200);
+                res.write(ejs.render(file, tplVars), "binary");
+                res.end();
               }
-              res.writeHead(200);
-              res.write(ejs.render(file, tplVars), "binary");
-              res.end();
-            }
-          })
-      });
-    } else if (extraParam === 'rss') {
-      this.rpc('rss', sysImports, options, channel, req, res);
-    } else {
-      res.send(404);
-    }
+            });
+
+        });
+      } else if (extraParam === 'rss') {
+        this.rpc('rss', sysImports, options, channel, req, res);
+      } else {
+        res.send(404);
+      }
+
+    });
 
   } else if ('remove_entity' === method) {
     if (options.guid) {
