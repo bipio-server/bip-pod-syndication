@@ -39,7 +39,7 @@ Subscribe.prototype = {};
  */
 Subscribe.prototype.expireTracker = function() {
   var self = this;
-  self.pod.expireDups(channel, 30, function(err) {
+  self.pod.expireDups(null, 30, function(err) {
     if (err) {
       self.log(err, {
         owner_id : 'SYSTEM',
