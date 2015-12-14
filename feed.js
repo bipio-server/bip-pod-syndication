@@ -288,7 +288,7 @@ Feed.prototype.invoke = function(imports, channel, sysImports, contentParts, nex
           entityStruct = $resource.helper.pasteurize(entityStruct, true);
 
           // if we have an image, push it into cdn
-          if (imports.image) {
+          if (imports.image && /http(s?):/.test(imports.image) ) {
             var path = self.pod.getCDNDir(channel, 'feed','img'),
               dstFile = path + $resource.helper.strHash(imports.image) + '.' + (imports.image.split('.').pop()),
               closure = function(err, struct) {
